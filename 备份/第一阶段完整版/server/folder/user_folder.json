@@ -1,0 +1,86 @@
+{
+    "new_user": {
+        "username": "new_user",
+        "password": "new_password",
+        "nickname": "kipely",
+        "money": 500,
+        "gender": "female"
+    },
+    "ldh": {
+        "username": "ldh",
+        "password": "ldh",
+        "nickname": "kipley",
+        "money": 500,
+        "gender": "female"
+    },
+    "lc": {
+        "username": "lc",
+        "password": "lc",
+        "nickname": "lc",
+        "money": 500,
+        "gender": "male"
+    },
+    "jsl": {
+        "username": "jsl",
+        "password": "jsl",
+        "nickname": "jsl",
+        "money": 500,
+        "gender": "male"
+    },
+    "tjl": {
+        "username": "tjl",
+        "password": "tjl",
+        "nickname": "tjl",
+        "money": 500,
+        "gender": "male"
+    },
+    "djr": {
+        "username": "djr",
+        "password": "djr",
+        "nickname": "djr",
+        "money": 500,
+        "gender": "male"
+    },
+    "wfs": {
+        "username": "wfs",
+        "password": "wfs",
+        "nickname": "wfs",
+        "money": 500,
+        "gender": "male"
+    },
+    "zy": {
+        "username": "zy",
+        "password": "zy",
+        "nickname": "zy",
+        "money": 500,
+        "gender": "male"
+    },
+    "wwk": {
+        "username": "wwk",
+        "password": "wwk",
+        "nickname": "wwk",
+        "money": 500,
+        "gender": "female"
+    },
+    "yjx": {
+        "username": "yjx",
+        "password": "yjx",
+        "nickname": "yjx",
+        "money": 500,
+        "gender": "female"
+    },
+    "bhy": {
+        "username": "bhy",
+        "password": "bhy",
+        "nickname": "bhy",
+        "money": 500,
+        "gender": "female"
+    },
+    "lxh": {
+        "username": "lxh",
+        "password": "lxh",
+        "nickname": "lxh",
+        "money": 500,
+        "gender": "female"
+    }
+}

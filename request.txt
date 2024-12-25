@@ -1,0 +1,5 @@
+scp -r /home/kipleytaylor/Documents/MyCode/PythonProject/game_rendering/myclient pi@192.168.55.235:/home/pi/myenv
+
+python3 -m venv myenv
+
+source myenv/bin/activate

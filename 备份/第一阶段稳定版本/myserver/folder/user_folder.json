@@ -1,0 +1,106 @@
+{
+    "new_user": {
+        "username": "new_user",
+        "password": "new_password",
+        "nickname": "kipely",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "ldh": {
+        "username": "ldh",
+        "password": "ldh",
+        "nickname": "kipley",
+        "money": 635,
+        "gender": "female",
+        "locked": "False"
+    },
+    "lc": {
+        "username": "lc",
+        "password": "lc",
+        "nickname": "lc",
+        "money": 340,
+        "gender": "male",
+        "locked": "False"
+    },
+    "jsl": {
+        "username": "jsl",
+        "password": "jsl",
+        "nickname": "jsl",
+        "money": 520,
+        "gender": "male",
+        "locked": "False"
+    },
+    "tjl": {
+        "username": "tjl",
+        "password": "tjl",
+        "nickname": "tjl",
+        "money": 565,
+        "gender": "male",
+        "locked": "False"
+    },
+    "djr": {
+        "username": "djr",
+        "password": "djr",
+        "nickname": "djr",
+        "money": 485,
+        "gender": "male",
+        "locked": "False"
+    },
+    "wfs": {
+        "username": "wfs",
+        "password": "wfs",
+        "nickname": "wfs",
+        "money": 500,
+        "gender": "male",
+        "locked": "False"
+    },
+    "zy": {
+        "username": "zy",
+        "password": "zy",
+        "nickname": "zy",
+        "money": 500,
+        "gender": "male",
+        "locked": "False"
+    },
+    "wwk": {
+        "username": "wwk",
+        "password": "wwk",
+        "nickname": "wwk",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "yjx": {
+        "username": "yjx",
+        "password": "yjx",
+        "nickname": "yjx",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "bhy": {
+        "username": "bhy",
+        "password": "bhy",
+        "nickname": "bhy",
+        "money": 520,
+        "gender": "female",
+        "locked": "False"
+    },
+    "lxh": {
+        "username": "lxh",
+        "password": "lxh",
+        "nickname": "lxh",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "gx": {
+        "username": "gx",
+        "password": "gx",
+        "nickname": "gx",
+        "money": 435,
+        "gender": "male",
+        "locked": "False"
+    }
+}

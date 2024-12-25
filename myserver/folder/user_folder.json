@@ -1,0 +1,170 @@
+{
+    "ldh": {
+        "username": "ldh",
+        "password": "ldh",
+        "nickname": "kipley",
+        "money": 530,
+        "gender": "female",
+        "locked": "True"
+    },
+    "lc": {
+        "username": "lc",
+        "password": "lc",
+        "nickname": "lc",
+        "money": 525,
+        "gender": "male",
+        "locked": "False"
+    },
+    "jsl": {
+        "username": "jsl",
+        "password": "jsl",
+        "nickname": "jsl",
+        "money": 620,
+        "gender": "male",
+        "locked": "False"
+    },
+    "djr": {
+        "username": "djr",
+        "password": "djr",
+        "nickname": "djr",
+        "money": 500,
+        "gender": "male",
+        "locked": "False"
+    },
+    "wfs": {
+        "username": "wfs",
+        "password": "wfs",
+        "nickname": "wfs",
+        "money": 500,
+        "gender": "male",
+        "locked": "False"
+    },
+    "zy": {
+        "username": "zy",
+        "password": "zy",
+        "nickname": "zy",
+        "money": 500,
+        "gender": "male",
+        "locked": "False"
+    },
+    "wwk": {
+        "username": "wwk",
+        "password": "wwk",
+        "nickname": "wwk",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "yjx": {
+        "username": "yjx",
+        "password": "yjx",
+        "nickname": "yjx",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "bhy": {
+        "username": "bhy",
+        "password": "bhy",
+        "nickname": "bhy",
+        "money": 520,
+        "gender": "female",
+        "locked": "False"
+    },
+    "lxh": {
+        "username": "lxh",
+        "password": "lxh",
+        "nickname": "lxh",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "gx": {
+        "username": "gx",
+        "password": "gx",
+        "nickname": "gx",
+        "money": 395,
+        "gender": "male",
+        "locked": "False"
+    },
+    "wyh": {
+        "username": "wyh",
+        "password": "wyh",
+        "nickname": "wyh",
+        "money": 495,
+        "gender": "male",
+        "locked": "False"
+    },
+    "lxs": {
+        "username": "lxs",
+        "password": "lxs",
+        "nickname": "lxs",
+        "money": 500,
+        "gender": "male",
+        "locked": "False"
+    },
+    "canstar": {
+        "username": "canstar",
+        "password": "760101",
+        "nickname": "canLiang",
+        "money": 425,
+        "gender": "male",
+        "locked": "False"
+    },
+    "robot0": {
+        "username": "robot0",
+        "password": "robot0",
+        "nickname": "robot0",
+        "money": -390,
+        "gender": "female",
+        "locked": "False"
+    },
+    "robot1": {
+        "username": "robot1",
+        "password": "robot1",
+        "nickname": "robot1",
+        "money": 1760,
+        "gender": "male",
+        "locked": "False"
+    },
+    "robot2": {
+        "username": "robot2",
+        "password": "robot2",
+        "nickname": "robot2",
+        "money": 1000,
+        "gender": "female",
+        "locked": "False"
+    },
+    "0721": {
+        "username": "0721",
+        "password": "0721",
+        "nickname": "0721",
+        "money": 500,
+        "gender": "female",
+        "locked": "False"
+    },
+    "wch": {
+        "username": "wch",
+        "password": "wch",
+        "nickname": "wch",
+        "money": 485,
+        "gender": "female",
+        "locked": "True"
+    },
+    "mch": {
+        "username": "mch",
+        "password": "mch",
+        "nickname": "mch",
+        "money": 435,
+        "gender": "male",
+        "locked": "False"
+    },
+    "tjl": {
+        "username": "tjl",
+        "password": "tjl",
+        "nickname": "tjl",
+        "money": 530,
+        "gender": "male",
+        "locked": "False"
+    }
+}
