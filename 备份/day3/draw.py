@@ -6,7 +6,7 @@ from const import *
 from pygame.locals import *
 from algorithm import *
 from key_handle import *
-from myclient.main import event
+
 
 pygame.init()
 clock = pygame.time.Clock()  # 创建一个Clock对象来帮助跟踪时间
