@@ -18,7 +18,7 @@ import os
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-from common import h, check, summary
+from common import check, h, summary
 
 
 def exercise(name, cls, five_args):

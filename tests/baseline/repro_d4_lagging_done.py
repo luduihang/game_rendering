@@ -12,7 +12,9 @@ game_room_deepseek_cp.py::main 的控制流：
 本脚本按下述结构复刻该控制流，统计「对局已结束但仍被调用 get_choice」的次数。
 """
 
-from common import h, check, summary
+import os
+
+from common import check, h, summary
 
 import game_room_deepseek_cp as G
 
@@ -73,10 +75,19 @@ def main():
     ok_fix = fix.calls_after_finish == 0
     check("room.finish 守卫版本不应在结束后继续行动", ok_fix)
 
-    passed = int(ok_fix)
+    # 真实源码断言：修复后 game_room_deepseek_cp.py 的循环不得再用滞后 done 标志
+    src = open(os.path.join(os.path.dirname(__file__), "..", "..",
+                            "game_room_deepseek_cp.py"), encoding="utf-8").read()
+    uses_lagging = "if not done:" in src
+    uses_finish = "if not room.finish:" in src
+    check("game_room_deepseek_cp.py 已改用 room.finish 守卫（不依赖滞后 done）",
+          (not uses_lagging) and uses_finish,
+          f"源码中 if not done: {uses_lagging} / if not room.finish: {uses_finish}")
+
+    passed = int(ok_fix) + int((not uses_lagging) and uses_finish)
     bugs = int(not ok_lag)
     summary("D4", passed, bugs,
-            "仅 game_room_deepseek_cp.py::main 有该缺陷；draw.py 已正确")
+            "滞后 guard 仍作为「错误模式」保留在夹具中；真实源码已修复")
 
 
 if __name__ == "__main__":

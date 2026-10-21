@@ -8,8 +8,7 @@ Cards.draw_cards_plus()：抽 3 组候选（各 3 张），算每组强度，只
 """
 
 import numpy as np
-
-from common import h, check, summary, exact_value_table, hand_percentile
+from common import check, exact_value_table, h, hand_percentile, summary
 
 from card_deck import Cards
 

@@ -1,244 +1,127 @@
+"""【兼容层】旧版卡牌 API，判定与强度计算全部委托给 core。
+
+保留原因：``draw_me_vs_DQN_Plus.py``（唯一策略入口）、``mymath/robot2.py`` 与
+``game_room_deepseek_cp.py`` 仍按旧接口调用。P3/P5 完成后本文件将被移除。
+
+相对旧版的变化：
+- 删除模块级 import 副作用（原先 import 就会跑 2000 轮蒙特卡洛并 print）
+- ``Cards_Value`` / ``Cards_Probability`` 不再自己实现判定，而是委托 core
+- ``draw_cards_plus()`` 保留为**遗留的偏置发牌**（三抽一取最优），默认路径
+  请改用 ``draw_cards()``（均匀发牌，契约 D-R1）
+"""
+
 import random
+
+from core.cards import Card
+from core.evaluator import HAND_TYPE_NAMES, evaluate
+from core.strength import beats_probability, strength_bin, strength_ordinal
+
+__all__ = ["Cards", "Cards_Value", "Cards_Probability"]
+
+
+def _to_core(cards):
+    """接受旧式 {'suit','value'} 字典或 core.Card，统一转成 core.Card。"""
+    return tuple(c if isinstance(c, Card) else Card.from_legacy(c) for c in cards)
+
+
+def _to_legacy(cards):
+    return [c.to_legacy() for c in cards]
 
 
 class Cards:
+    """52 张牌堆（旧式字典表示，保持与旧调用方兼容）。"""
+
     def __init__(self):
         self.cards = []
         self.reset_deck()
 
     def reset_deck(self):
-        self.cards = []
-        for suit in ['黑桃', '红心', '方块', '梅花']:
-            for value in range(2, 15):
-                self.cards.append({'suit': suit, 'value': value})
+        self.cards = [
+            {"suit": suit, "value": value}
+            for suit in ["黑桃", "红心", "方块", "梅花"]
+            for value in range(2, 15)
+        ]
 
     def shuffle_deck(self):
         random.shuffle(self.cards)
 
     def draw_cards(self, num_cards=3):
+        """均匀发牌（默认路径）。"""
         if len(self.cards) < num_cards:
             print("Not enough cards in the deck.")
             return None
         return [self.cards.pop() for _ in range(num_cards)]
 
-    def draw_cards_plus(self,num_cards=3):
-        max_probability = 0
+    def draw_cards_plus(self, num_cards=3):
+        """【遗留行为，不推荐】抽 3 组候选并保留最强的一组，其余弃置。
+
+        这会破坏牌局公平性（契约 D6：默认必须用 draw_cards）。为可复现历史实验保留。
+        """
         best_cards = None
-
+        best_probability = -1.0
         for _ in range(3):
-            drawn_cards = self.draw_cards(num_cards)
-            if drawn_cards is None:
+            drawn = self.draw_cards(num_cards)
+            if drawn is None:
                 return None
-
-            cards_probability = Cards_Probability(drawn_cards)
-            cards_probability.get_probability()
-
-            if cards_probability.probability > max_probability:
-                max_probability = cards_probability.probability
-                best_cards = drawn_cards
-
+            probability = Cards_Probability(drawn).get_probability()
+            if probability > best_probability:
+                best_probability = probability
+                best_cards = drawn
         return best_cards
 
+
 class Cards_Value:
+    """手牌强度（委托 core.evaluator）。"""
+
     def __init__(self, cards):
         self.cards = cards
         self.value = 0
-        self.type = None  #type=0无  type=1对子 type=2拖拉机 type=3假金花  type=4金花 type=5三个一样
+        self.type = None
         self.probability = None
-        # type = 0 无
-    def max_consecutive_value(self):
-        # 提取每张牌的值
-        values = [card['value'] for card in self.cards]
-        # 对值进行排序
-        values.sort()
-
-        # 判断是否连续
-        if values[0] + 1 == values[1] and values[1] + 1 == values[2]:
-            # 判断是否为顺子
-            return max(values)
-        else:
-            return None
 
     def Get_Type(self):
-        # 提取每张牌的值和花色
-        values = [card['value'] for card in self.cards]
-        suits = [card['suit'] for card in self.cards]
-        values.sort()
-
-        if len(set(values)) == 1:
-            self.type = 5
-        elif self.max_consecutive_value() and suits[0] == suits[1] == suits[2]:
-            self.type = 4
-        elif suits[0] == suits[1] == suits[2] and self.max_consecutive_value() is None:
-            self.type = 3
-        elif self.max_consecutive_value():
-            self.type = 2
-        elif len(set(values)) == 2:
-            self.type = 1
-        else:
-            self.type = 0
+        self.type = int(evaluate(_to_core(self.cards)).hand_type)
+        return self.type
 
     def Get_Value(self):
-        suit_list = ['黑桃', '红心', '方块', '梅花']  #从左到右依次递减
-
-        self.Get_Type()
-        values = [card['value'] for card in self.cards]
-        new_values = values
-        values.sort()
-        suits = [card['suit'] for card in self.cards]
-
-        if self.type == 5:
-            self.value = 100000 * self.type +  values[0]
-        if self.type == 4:
-            self.value = 100000 * self.type + values[2] * 1000 + (3 - suit_list.index(suits[0])) * 10
-        if self.type == 3:
-            self.value = 100000 * self.type + values[2] * 1000 + (3 - suit_list.index(suits[0])) * 10
-        if self.type == 2:
-            values = [card['value'] for card in self.cards]
-            new_values = [card['value'] for card in self.cards]
-            values.sort()
-            max_value = values[2]
-            max_index = new_values.index(max_value)
-            max_suit = suits[max_index]
-            self.value = 100000 * self.type + values[2] * 1000 + (3 - suit_list.index(max_suit)) * 10
-        if self.type == 1:
-            different_value = None
-            equal_values = []  # 存储相等卡牌的值
-            prev_value = None
-            for num in values:
-                if num == prev_value:
-                    equal_values.append(num)
-                prev_value = num
-            #获取另一个不相等的牌的大小值
-            # print("equal_values", equal_values)
-            if equal_values:  # 检查相等卡牌列表是否不为空
-                for value in values:
-                    if values.count(value) == 1 and value != equal_values[0]:
-                        different_value = value
-                        break
-
-                new_values = [card['value'] for card in self.cards]
-                dif_suit = suits[new_values.index(different_value)]
-                self.value = 100000 * self.type + equal_values[0] * 1000 + different_value * 10 + (3 - suit_list.index(dif_suit)) * 1
-            else:
-                self.value = 0
-                print("两张相同的卡片逻辑问题")
-            # 处理找不到不相等牌的情况
-            # 可以选择设定一个默认值或者处理其他逻辑
-        if self.type == 0:
-            values = [card['value'] for card in self.cards]
-            new_values = [card['value'] for card in self.cards]
-            values.sort()
-            max_value = values[2]
-            max_index = new_values.index(max_value)
-            max_suit = suits[max_index]
-
-            self.value = 100000 * self.type + values[2] * 5000 + values[1] * 400 + values[0] * 20 + (3 - suit_list.index(max_suit)) * 1
-
+        """返回该手牌在 22100 手中的强度名次（越大越强，确定性）。"""
+        self.type = self.Get_Type()
+        self.value = strength_ordinal(_to_core(self.cards))
         return self.value
 
+    def max_consecutive_value(self):
+        cards = sorted(_to_core(self.cards), key=lambda c: c.rank)
+        ranks = [c.rank for c in cards]
+        if ranks[0] + 1 == ranks[1] and ranks[1] + 1 == ranks[2]:
+            return ranks[-1]
+        return None
+
+    def type_name(self):
+        if self.type is None:
+            self.Get_Type()
+        return HAND_TYPE_NAMES[int(self.type)]
+
+
 class Cards_Probability:
+    """手牌击败随机手牌的概率（穷举精确值，委托 core.strength）。"""
+
     def __init__(self, cards):
-        self.deck = Cards()
-        self.deck.reset_deck()
-        self.deck.shuffle_deck()
         self.cards = cards
         self.value = None
         self.probability = None
+        self._core = None
+
+    def _hand(self):
+        if self._core is None:
+            self._core = _to_core(self.cards)
+        return self._core
 
     def get_probability(self):
-        num = 0
-        cards_value = Cards_Value(self.cards)
-        self.value = cards_value.Get_Value()
-
-        for i in range(2000):
-            self.deck.reset_deck()
-            self.deck.shuffle_deck()
-            cards_copy = self.deck.draw_cards(3)
-            cards_value_copy = Cards_Value(cards_copy)
-            cards_value_copy.Get_Value()
-            if self.value > cards_value_copy.value:
-                num += 1
-        self.probability = num / 2000
+        self.value = strength_ordinal(self._hand())
+        self.probability = beats_probability(self._hand())
         return self.probability
 
     def get_state(self):
-        num = 0
-        cards_value = Cards_Value(self.cards)
-        self.value = cards_value.Get_Value()
-
-        for i in range(2000):
-            self.deck.reset_deck()
-            self.deck.shuffle_deck()
-            cards_copy = self.deck.draw_cards(3)
-            cards_value_copy = Cards_Value(cards_copy)
-            cards_value_copy.Get_Value()
-            if self.value > cards_value_copy.value:
-                num += 1
-        self.probability = num / 2000
-        if self.probability < 0.4:
-            return 1
-        elif self.probability < 0.7:
-            return 2
-        elif self.probability < 0.9:
-            return 3
-        elif self.probability < 0.96:
-            return 4
-        elif self.probability < 0.99:
-            return 5
-        else:
-            return 6
-
-
-cards1 = [{'suit': '黑桃', 'value': 7}, {'suit': '方块', 'value': 7}, {'suit': '红心', 'value': 2}]
-cards_probability =  Cards_Probability(cards1)
-cards_probability.get_probability()
-print("cards_probability:", cards_probability.probability)
-print("cards_probability.get_state():", cards_probability.get_state())
-# # 创建一个牌堆实例
-# deck = Cards()
-# print("Initial deck:")
-# # 洗牌
-# #
-# # cards1 = [{'suit': '红心', 'value': 12}, {'suit': '方块', 'value': 2}, {'suit': '黑桃', 'value': 13}]
-# array = [0] * 6
-# times = 0
-# my_times= 0
-# for i in range(1000):
-#     deck.shuffle_deck()
-#     drawn_cards_01 = deck.draw_cards(3)
-#     drawn_cards_02 = deck.draw_cards(3)
-#     card_value_01 = Cards_Value(drawn_cards_01)
-#     card_value_02 = Cards_Value(drawn_cards_02)
-#     card_value_01.Get_Value()
-#     card_value_02.Get_Value()
-#     if(card_value_01.value > card_value_02.value):
-#         times += 1
-#     if(card_value_01.value < card_value_02.value):
-#         my_times += 1
-#     if card_value_01.value == card_value_02.value:
-#         print(card_value_01.value)
-#         values = [card['value'] for card in drawn_cards_01]
-#         suits = [card['suit'] for card in drawn_cards_01]
-#         for value, suit in zip(values, suits):
-#             print(f"牌是{suit}{value},")
-#
-#         values = [card['value'] for card in drawn_cards_02]
-#         suits = [card['suit'] for card in drawn_cards_02]
-#         for value, suit in zip(values, suits):
-#             print(f"牌是{suit}{value},")
-#
-#     deck.reset_deck()
-#
-# print("玩家1次数：", times)
-# print("玩家2次数：", my_times)
-# #经过测试没有发生平局次数，而且测试1000000次都没有，胜率趋于1：1，随机抽卡公平，大小判定函数正确
-#
-
-# deck = Cards()
-# deck.shuffle_deck()
-# drawn_cards_03 = deck.draw_cards(3)
-# print(drawn_cards_03)
-# card_value_01 = Cards_Value(drawn_cards_03)
-# card_value_01.Get_Value()
-# print(card_value_01.value)
+        self.value = strength_ordinal(self._hand())
+        self.probability = beats_probability(self._hand())
+        return strength_bin(self._hand())

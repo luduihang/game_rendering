@@ -22,8 +22,8 @@ class Game_room:
         self.finish = False
         self.winner = 0
 
-        self.cards1 = self.deck.draw_cards_plus()
-        self.cards2 = self.deck.draw_cards_plus()
+        self.cards1 = self.deck.draw_cards()
+        self.cards2 = self.deck.draw_cards()
         self.get_value1 = Cards_Value(self.cards1)
         self.wallet1 = 20000
         self.get_value2 = Cards_Value(self.cards2)
@@ -31,8 +31,6 @@ class Game_room:
         self.cards1_value = self.get_value1.Get_Value()
         self.cards2_value = self.get_value2.Get_Value()
         self.player_money = [20000, 20000]
-        print("机器人的手牌是", self.cards1)
-        print("玩家的手牌是", self.cards2)
 
     def init_arg(self):
         # 重置，理解为重新下注，重新开一局
@@ -49,8 +47,8 @@ class Game_room:
         self.whose_turn = 0  #当前出牌的玩家
         self.finish = False
         self.winner = 0
-        self.cards1 = self.deck.draw_cards_plus()
-        self.cards2 = self.deck.draw_cards_plus()
+        self.cards1 = self.deck.draw_cards()
+        self.cards2 = self.deck.draw_cards()
         self.get_value1 = Cards_Value(self.cards1)
         self.get_value2 = Cards_Value(self.cards2)
         self.cards1_value = self.get_value1.Get_Value()
@@ -63,6 +61,7 @@ class Game_room:
     def show_inform(self):
         for i in range(len(self.player_bet)):
             print(f"玩家{i}已经押注{self.player_bet[i]}")
+        # D5：原实现把 cards1 同时描述为「机器人手牌」与「玩家0手牌」，现统一口径
         print(f"玩家0的手牌是{self.cards1}")
         print(f"玩家1的手牌是{self.cards2}")
         print()
@@ -81,18 +80,13 @@ class Game_room:
             self.player_bet[self.whose_turn] += int(options[self.rest_option])
             self.player_money[self.whose_turn] -= int(options[self.rest_option])
             self.all_bet += int(options[self.rest_option])
-            # 玩家0看牌 如果玩家0小 winner = 1
-            # 玩家1看牌 如果玩家1小 winner = 0
-            if self.cards1_value < self.cards2_value:
-                print("触发了这个if函数")
-                self.winner = 0
-                self.finish = True
-                print("finish is true")
-            else:
-                print("触发了这个else函数")
-                self.winner = 1
-                self.finish = True
-                print("finish is true")
+            # D1 修复：看牌方支付当前单注后与对手比大小，**比输者输**。
+            # 原实现为 `if cards1_value < cards2_value: winner = 0`，
+            # 既忽略 whose_turn，又把比较方向写反（牌小者获胜）。
+            own_value = self.cards1_value if self.whose_turn == 0 else self.cards2_value
+            opp_value = self.cards2_value if self.whose_turn == 0 else self.cards1_value
+            self.winner = self.whose_turn if own_value > opp_value else 1 - self.whose_turn
+            self.finish = True
         # print(f"玩家{self.whose_turn}选择了", options[action])
         self.whose_turn += 1
         if self.whose_turn % 2 == 1:
@@ -273,7 +267,7 @@ def main():
             opponent_robot.update_dick(json_pack)
 
             # 对手机器人（玩家1）的回合
-            if not done:
+            if not room.finish:
                 opponent_action = opponent_robot.cal_final_option()
                 room.get_choice(opponent_action['option'])
 

@@ -11,7 +11,7 @@
 预期基线：4 个用例中「看牌方牌小」的 2 个用例判胜反转。
 """
 
-from common import h, check, summary
+from common import check, h, summary
 
 import game_room_deepseek_cp as G
 

@@ -18,10 +18,8 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import numpy as np
-
-from common import h, check, summary
-
 import torch.nn as nn
+from common import check, h, summary
 
 h("D7 阻塞式时序与事件循环缺陷")
 
@@ -78,7 +76,7 @@ t_deal_plus = time.perf_counter() - t0
 
 print(f"  单次 Cards_Probability.get_state()  = {t_state*1000:7.1f} ms  (2000 轮蒙特卡洛)")
 print(f"  单次 Cards.draw_cards_plus(3)       = {t_deal_plus*1000:7.1f} ms  (3×2000 轮)")
-print(f"  每步固定 sleep（draw_me_vs_DQN.py） = 1500.0 ms")
+print("  每步固定 sleep（draw_me_vs_DQN.py） = 1500.0 ms")
 print(f"  → 单步墙钟 ≈ {(t_state + 1.5)*1000:7.1f} ms，其中 sleep 占 "
       f"{1.5/(t_state+1.5)*100:4.1f}%，计算占 {t_state/(t_state+1.5)*100:4.1f}%")
 check("单步不应含固定 sleep", False, "sleep 占单步墙钟的大头，且与计算串行叠加")

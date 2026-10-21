@@ -14,7 +14,7 @@ r2 曾断言这里存在「信息泄漏」（玩家0 读到对手手牌）。r3 
 import contextlib
 import io
 
-from common import h, check, summary
+from common import check, h, summary
 
 import game_room_deepseek_cp as G
 from card_deck import Cards_Probability
