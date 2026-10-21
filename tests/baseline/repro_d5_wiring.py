@@ -18,7 +18,7 @@ from common import h, check, summary
 
 import game_room_deepseek_cp as G
 from card_deck import Cards_Probability
-from mymath.robot import Robot
+from mymath.robot2 import Robot2
 
 
 def hand_str(cards):
@@ -52,12 +52,12 @@ def main():
           "两处都把 cards1 描述成不同的归属 → 遗留脏标签（D5 降级后的真实问题）")
 
     # 3) 机器人实际拿到哪份牌
-    robot = Robot("1")
+    robot = Robot2("1")
     robot.init_dick(["1", "0"], room.cards2)
     robot_has_cards2 = robot.cards == room.cards2
     print(f"\ncards1 (玩家0? 机器人?) : {hand_str(room.cards1)}")
     print(f"cards2 (玩家1?)          : {hand_str(room.cards2)}")
-    print(f"Robot('1').init_dick(..., room.cards2) 后，机器人持有 cards2: {robot_has_cards2}")
+    print(f"Robot2('1').init_dick(..., room.cards2) 后，机器人持有 cards2: {robot_has_cards2}")
 
     # 4) DQN 玩家0 的状态特征来自哪份牌
     p_cards1 = Cards_Probability(room.cards1).get_state()

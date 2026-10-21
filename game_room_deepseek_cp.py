@@ -2,7 +2,6 @@ import torch
 import numpy as np
 from collections import deque
 import random
-from mymath.robot import Robot
 from mymath.robot2 import Robot2
 from card_deck import Cards, Cards_Value, Cards_Probability
 import pickle
@@ -244,7 +243,7 @@ def main():
     win_rate_history = []
 
     for episode in range(total_episodes):
-        opponent_robot = Robot('1')  # 原robot作为对手
+        opponent_robot = Robot2('1')  # 唯一对手策略（原 robot 已按契约 D-R5 移除）
         room.init_arg()  # 重置游戏
         state = dqn_agent.get_state(room, 0)
         total_reward = 0
