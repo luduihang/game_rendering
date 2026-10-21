@@ -5,34 +5,29 @@
 
 
 <!-- session-in-progress:start=2026-10-21T09:09:58.050Z -->
-## 2026-10-21 17:57 — P2 完成（commit `4696aa8`）。当前进度汇总：
+## 2026-10-21 18:03 — P3/P4/P5 全部完成（提交 `b869030` / `414b3ad` / `e0263e1`）。
 
-## 已完成
+## 最终状态
 
-| 阶段 | 提交 | 内容 |
+| 阶段 | 结果 |
+|---|... _(in progress)_
+P3/P4/P5 全部完成（提交 `b869030` / `414b3ad` / `e0263e1`）。
+
+## 最终状态
+
+| 阶段 | 结果 |
+|---|---|
+| **P3 agents/** | `BaseAgent` + `DQN` + `Robot`；**D8** 维度自适应、**D9** 真实权重生效 |
+| **P4 scripts/** | `train.py` / `evaluate.py`，同种子**逐位可复现**，产物进 `run/` |
+| **P5 ui/** | `clock` / `theme` / `render` / `app`；**D7 全部修复** |
+
+## 缺陷修复对照（同一脚本，P0 时为红）
+
+| 缺陷 | P0 基线 | 现在 |
 |---|---|---|
-| **P0**... _(in progress)_
-P2 完成（commit `4696aa8`）。当前进度汇总：
-
-## 已完成
-
-| 阶段 | 提交 | 内容 |
-|---|---|---|
-| **P0** | `97a2737` | 环境修复 + 基线报告 + 6 个缺陷复现脚本 |
-| **P1** | `38c427d` `b3272e8` | 卫生改造 + **单一策略清理**（删 16 文件 + `备份/`，仓库 284M→106M） |
-| **P2** | `4696aa8` | **core/ 核心包 + D1/D2/D4/D6 修复** |
-
-## P2 关键成果
-
-**新增 `core/`（纯逻辑，零重依赖）**
-`cards.py` · `evaluator.py` · `strength.py` · `dealing.py` · `rules.py`
-
-**先红后绿证据（同一脚本，修复前后对比）**
-
-| 缺陷 | 修复前 | 修复后 |
-|---|---|---|
-| **D1** 看牌结算 | `passed=0 bug=4` | **`passed=4 bug=0`** |
-| **D2** r...
+| D1 看牌结算 | `bug=4` 牌小者获胜 | **`passed=4`** |
+| D2 rest_option | 押 100 后仍为 0 | **`passed=5`**（含坏路径与 pygame 解耦） |
+| D4 滞后 done | 结束后多走 1 步...
 <!-- end-session-in-progress -->
 ## 2026-10-21 17:08 — Line 6 is empty — so it's 5 real events plus a trailing newline, exactly as befo...
 Line 6 is empty — so it's 5 real events plus a trailing newline, exactly as before. No corruption, no stale lock. Your data is clean.

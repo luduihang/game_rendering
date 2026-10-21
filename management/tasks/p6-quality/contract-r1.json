@@ -1,0 +1,42 @@
+{
+  "acceptance": [
+    "CI 配置建立（ruff + pytest），本地以等价命令验证通过",
+    "README 补齐架构图与四个入口（游戏/训练/评估/测试）的使用说明",
+    "干净虚拟环境按 pyproject 安装后跑通训练、评估、UI 冒烟（含 headless）",
+    "docs/FINAL-REPORT.md 逐条勾选 r5 的 16 项 successCriteria，每项附可验证证据（命令或提交）",
+    "全部 ruff 检查通过、pytest 全绿、基线回归脚本 D1-D7 全部 passed",
+    "治理任务状态与 CHANGELOG 更新到最终形态"
+  ],
+  "authority": {
+    "commitBranch": true,
+    "integrateBranch": false,
+    "paths": [
+      "."
+    ],
+    "readRepository": true,
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write"
+    ],
+    "writeWorkspace": true
+  },
+  "budgetTokens": 300000,
+  "dependencies": [
+    {
+      "requiredState": "accepted",
+      "taskId": "p5-ui"
+    }
+  ],
+  "goal": "质量收尾：建立 CI（ruff+pytest），补齐 README 架构与入口说明，验证干净环境安装可跑通全部入口，产出逐条对照 r5 successCriteria 的收尾报告。",
+  "maxConcurrent": 2,
+  "maxDepth": 1,
+  "owner": "pi-session:01a15d4a-59f0-70f9-85ab-6adf6323a3cc",
+  "revision": 1,
+  "scope": [
+    "测试与质量：pytest 覆盖牌型六类+边界/平局、规则关键路径、D1/D2/D4/D6/D8/D9 回归、时序契约（QUIT 在等待期间被响应、headless 单步耗时上限、零 sleep 断言）、智能体接口冒烟、UI↔core 状态一致性硬断言；ruff 基线清零；CI（ruff+pytest）",
+    "保留策略可稳定启动（验收导向）：真实显示下可完整走完一局人类 vs DQN 对局；AI 使用 dqn_model_1.pth 的 4 维策略而非随机；等待输入时窗口可关闭、可重绘；无未捕获异常、无 libpng 之外的告警刷屏"
+  ],
+  "taskId": "p6-quality"
+}

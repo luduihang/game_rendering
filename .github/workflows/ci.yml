@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "refactor/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # UI 相关测试与冒烟在无显示环境下运行
+  SDL_VIDEODRIVER: dummy
+  SDL_AUDIODRIVER: dummy
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  quality:
+    name: ruff + pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: 安装依赖（CPU 版 torch，减小体积）
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+
+      - name: ruff 静态检查
+        run: ruff check . --output-format=github
+
+      - name: 单元测试
+        run: pytest -q
+
+      - name: 缺陷回归脚本（D1/D2/D4/D5/D6/D7）
+        run: |
+          set -e
+          for script in repro_d1_showcards repro_d2_rest_option repro_d4_lagging_done \
+                        repro_d5_wiring repro_d6_dealing repro_d7_timing; do
+            echo "::group::$script"
+            ( cd tests/baseline && python "$script.py" ) || exit 1
+            echo "::endgroup::"
+          done
+
+      - name: 无头冒烟（训练 / 评估 / UI）
+        run: |
+          set -e
+          python -m scripts.train --episodes 2 --seed 5 --out run/ci
+          python -m scripts.evaluate --rounds 5 --seed 5 --out run/ci
+          python - <<'PY'
+          import pygame
+          pygame.init(); pygame.display.set_mode((1000, 700))
+          from ui.app import App, Controller
+          from ui.clock import TickPolicy, Ticker
+          from ui.render import Renderer
+
+          controller = Controller(seed=1, auto_human=True, think_seconds=0.0, settle_seconds=0.0)
+          controller.new_round(now=0.0)
+          app = App(controller, renderer=Renderer(), ticker=Ticker(TickPolicy.IMMEDIATE))
+          for _ in range(600):
+              app.step_frame()
+              if controller.room.finish:
+                  break
+          assert controller.room.finish, "UI 冒烟未能完成一局"
+          assert controller.agent.epsilon == 0.0, "AI 未加载训练权重"
+          print("UI 冒烟通过")
+          PY
+
+      - name: 可复现性验证（同种子逐位一致）
+        run: |
+          python -m scripts.train --episodes 3 --seed 2026 --out run/rep_a > /dev/null
+          python -m scripts.train --episodes 3 --seed 2026 --out run/rep_b > /dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          a = json.loads(Path("run/rep_a/summary_seed2026.json").read_text())["weights_hash"]
+          b = json.loads(Path("run/rep_b/summary_seed2026.json").read_text())["weights_hash"]
+          assert a == b, f"同种子两次训练不一致: {a} != {b}"
+          print(f"weights_hash 一致: {a[:16]}…")
+          PY

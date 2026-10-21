@@ -26,7 +26,10 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = []
+# 显式声明顶层包与顶层模块
+# （flat-layout 下有多个顶层包，自动发现会报 Multiple top-level packages）
+packages = ["core", "agents", "ui", "scripts", "mymath"]
+py-modules = ["const", "algorithm"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

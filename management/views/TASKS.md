@@ -7,6 +7,7 @@
 - p3-agents@1：建立 agents/ 智能体层：BaseAgent 接口、可配置 DQN 模块（含按 checkpoint 实际维度构造的 from_checkpoint 工厂，修复 D8）与迁入的 Robot2 对手策略；让保留策略真正加载 dqn_model_1.pth 的 4 维权重并生效（修复 D9）。；已批准；依赖 p2-core
 - p4-scripts@1：建立 scripts/ 训练与评估入口：参数化训练（回合/种子/设备/输出目录→run/）、无头对战评估、同种子逐位可复现；产物不进入 git。；已批准；依赖 p3-agents
 - p5-ui@1：把 UI 重构为事件驱动、零阻塞的薄渲染层：可注入节奏器替代 time.sleep、非阻塞 poll_input 响应 QUIT、状态一律向 core 查询、资源路径集中管理；并让保留策略在真实显示下完整走完一局且 AI 使用已训练权重。；已批准；依赖 p4-scripts
+- p6-quality@1：质量收尾：建立 CI（ruff+pytest），补齐 README 架构与入口说明，验证干净环境安装可跑通全部入口，产出逐条对照 r5 successCriteria 的收尾报告。；已批准；依赖 p5-ui
 
 ```mermaid
 graph TD
@@ -14,4 +15,5 @@ graph TD
   p2_core --> p3_agents
   p3_agents --> p4_scripts
   p4_scripts --> p5_ui
+  p5_ui --> p6_quality
 ```

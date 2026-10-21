@@ -5,9 +5,9 @@
   "previousSessionProject": "/home/kipley/documents/code/learning/game_exercise",
   "projectKey": "/home/kipley/documents/code/learning/game_exercise",
   "cumulative": {
-    "inputTokens": 455016,
-    "outputTokens": 191317,
-    "cacheReadTokens": 34933760,
+    "inputTokens": 463407,
+    "outputTokens": 202736,
+    "cacheReadTokens": 38568832,
     "cacheWriteTokens": 0,
     "cost": 0,
     "lessonHits": [],
@@ -16,8 +16,8 @@
     "models": [
       "deepseek-flash"
     ],
-    "turnIndex": 156,
-    "userTurns": 11,
+    "turnIndex": 167,
+    "userTurns": 12,
     "adjustedCost": 0,
     "warnedCost": false
   }

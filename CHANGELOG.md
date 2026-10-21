@@ -69,6 +69,37 @@ git checkout <删除提交的父提交> -- draw.py
 git checkout <删除提交的父提交> -- 备份/
 ```
 
+## [0.2.0] — 架构重构（P2–P6）
+
+### 新增分层
+- `core/`：`cards` · `evaluator` · `strength` · `dealing` · `rules`（纯逻辑，无 pygame/numpy/scipy/torch）
+- `agents/`：`base`（BaseAgent 接口）· `dqn`（含 `from_checkpoint` 维度自适应）· `robot`（Robot2 迁入）
+- `ui/`：`app`（事件驱动主循环）· `clock`（可注入节奏器）· `render`（薄渲染）· `theme`
+- `scripts/`：`env` · `train` · `evaluate`（无头、同种子逐位可复现）
+
+### 追加删除（P5 消除遗留链路，已由新分层取代）
+| 文件 | 取代者 |
+|---|---|
+| `game_room_deepseek_cp.py` | `core.rules.GameRoom` + `agents.dqn` |
+| `card_deck.py` | `core.cards` / `core.evaluator` / `core.strength` / `core.dealing` |
+| `mymath/robot2.py` | `agents.robot.Robot`（行为等价留证 L1=0.076） |
+
+### 重写
+- `algorithm.py`：收敛为「规则文案 + 已加固 RepeatedTimer」（移除与已删 UI 的耦合）
+- `const.py`：路径改 `pathlib` 包根相对；不再 import pygame；`pygame.Rect` 移出类体
+- `draw_me_vs_DQN_Plus.py`：20 个脚本中唯一的入口，重构为 6 行薄入口
+
+### 修复
+- D1 看牌结算（比较方向 + `whose_turn`）· D2 `rest_option` 单调 · D4 结束后拒绝行动
+- D5 手牌归属具名化 · D6 默认均匀发牌 · D7-a/b/c/d 时序与事件循环
+- D8 权重维度自适应 · D9 加载真实权重（`epsilon=0.0`）
+- `mymath/func_const.py::sum_circle_turn` 陈旧缓存（`circle_turn` 变化后仍返回旧值）
+
+### 质量
+- 104 项 pytest、6 个缺陷回归脚本、`ruff` 682 → 0
+- CI：`.github/workflows/ci.yml`（ruff + pytest + 回归 + 无头冒烟 + 可复现性）
+- 文档：`docs/BASELINE-REPORT.md`（基线实测）、`docs/FINAL-REPORT.md`（验收）
+
 ## [0.1.x] — 基线与卫生（P0 / P1 部分）
 
 - 修复运行环境：安装 pygame 2.6.1、matplotlib 3.8.0 → 3.11.2（numpy 2.x ABI 崩溃）、ruff 0.17.1

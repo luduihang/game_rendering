@@ -3,7 +3,7 @@
 项目 ID：7804c9ee-239d-4f72-ac9a-34c915425455
 
 项目基线：r5 / ACTIVE；草稿：5。
-任务 7；已验收 0；执行中 0；阻塞 4；待决策 0。
+任务 8；已验收 0；执行中 0；阻塞 5；待决策 0。
 
 ## 活跃 Agent
 
@@ -16,7 +16,6 @@
 
 ## 最近事件
 
-- 2026-10-21T09:12:50.026Z project.drafted  
 - 2026-10-21T09:14:22.131Z project.approved  
 - 2026-10-21T09:14:43.279Z project.drafted  
 - 2026-10-21T09:15:25.314Z task.created p0-baseline 
@@ -28,3 +27,4 @@
 - 2026-10-21T09:55:56.248Z task.created p3-agents 
 - 2026-10-21T09:55:56.271Z task.created p4-scripts 
 - 2026-10-21T09:56:01.065Z task.created p5-ui 
+- 2026-10-21T10:03:17.820Z task.created p6-quality 
