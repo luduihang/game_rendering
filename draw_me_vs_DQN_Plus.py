@@ -4,7 +4,6 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-from sympy import false
 from card_deck import *
 from const import *
 import pygame

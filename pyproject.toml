@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "game-exercise"
+version = "0.2.0"
+description = "炸金花（三张牌）博弈游戏 —— 人类对战 DQN 的单一策略实现"
+requires-python = ">=3.11"
+
+# 版本锁定策略：主/次版本锁定，允许补丁级更新。
+# torch 使用范围而非精确版本，以兼容 CUDA 构建（如 2.13.0+cu130）。
+# CUDA 用户请先按需安装对应的 torch 轮子，再执行 pip install -e .[dev]
+dependencies = [
+    "pygame==2.6.1",
+    "numpy>=2.3,<2.4",
+    "scipy>=1.17,<1.18",
+    "matplotlib>=3.11,<3.12",
+    "torch>=2.13,<2.14",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1",
+    "ruff>=0.17",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["备份", "__pycache__", ".venv", "src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# 基线复现脚本刻意保留「当前错误行为」，且需要较长行输出说明。
+"tests/baseline/*" = ["E501", "F401"]

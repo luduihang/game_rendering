@@ -24,11 +24,11 @@ def convolution_of_functions(f1, f2):
     convolved_samples_normalized = (x - min_x) / (max_x - min_x)
 
     # 归一化卷积结果为概率密度函数
-    normalization_factor = np.trapz(convolved_samples, convolved_samples_normalized)
+    normalization_factor = np.trapezoid(convolved_samples, convolved_samples_normalized)
     pdf_final = convolved_samples / normalization_factor
 
     # 计算均值
-    mean_value = np.trapz(convolved_samples_normalized * pdf_final, convolved_samples_normalized)
+    mean_value = np.trapezoid(convolved_samples_normalized * pdf_final, convolved_samples_normalized)
 
     def pdf_function(x_values):
         return np.interp(x_values, convolved_samples_normalized, pdf_final)
@@ -45,20 +45,20 @@ def circle_convolution(func1, func2, num):
 def integral_func(pdf,up_limit):
     x_values = np.linspace(0, up_limit, 1000)  # 在0到0.8之间创建更密集的点
     pdf_values = pdf(x_values)
-    integral_value = np.trapz(pdf_values, x_values)
+    integral_value = np.trapezoid(pdf_values, x_values)
     # print("积分的返回值是:",integral_value)
     return integral_value
 
 def mean_func(pdf):
     x_values = np.linspace(0,1,2000)
     pdf_values = pdf(x_values)
-    mean_value = np.trapz(x_values * pdf_values, x_values)
+    mean_value = np.trapezoid(x_values * pdf_values, x_values)
     return mean_value
 
 def switch_func(func1, conv):
     convolved = circle_convolution(func1, conv.weight_conv, 1)
     x = np.linspace(0, 1, 1000)
-    integral = np.trapz(convolved(x), x)
+    integral = np.trapezoid(convolved(x), x)
     return lambda x: convolved(x) / integral if integral !=0 else convolved(x)
 
 # # 已知的两个数组

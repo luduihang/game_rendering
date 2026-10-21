@@ -1,0 +1,33 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# ---- 虚拟环境 ----
+.venv/
+venv/
+env/
+
+# ---- 训练产物 / 模型权重（不进版本库）----
+# 权重与记忆文件体积大且随训练变化，按需本地保存或另行备份。
+*.pth
+*.pt
+remember.txt
+q_table*.txt
+
+# ---- 运行输出与统计图 ----
+run/
+*.log
+dqn_vs_dqn_stats.png
+dqn_vs_opponent_stats.png
+game_stats.png
+me_vs_qn_stats.png
+
+# ---- 编辑器 / 系统 ----
+.DS_Store
+.idea/
+.vscode/
