@@ -1,0 +1,38 @@
+{
+  "acceptance": [
+    "六个动作按钮改用原始贴图：src/button/{十注,二十注,五十注,一百注,弃牌,看牌}.png，按布局等比缩放",
+    "双方头像改用原始角色图：人类=src/character/火花.png，DQN=src/character/雪影娃娃第三阶段.png（可配置）",
+    "钱包与押注金额前显示 src/item_pic/金币.png 图标",
+    "任一贴图缺失时回退为现有文本/占位绘制，不崩溃、不影响行动",
+    "逻辑零改动：core/、agents/、scripts/ 无任何修改（git diff 为空）",
+    "UI↔core 状态一致性测试仍通过；按钮命中区域与实际绘制图像重合（命中测试断言）",
+    "新增贴图相关测试（资源映射、缺图回退、命中区域），pytest 与 ruff 全绿",
+    "截图验证渲染正确，并附在任务验收说明中"
+  ],
+  "authority": {
+    "commitBranch": true,
+    "integrateBranch": false,
+    "paths": [
+      "."
+    ],
+    "readRepository": true,
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write"
+    ],
+    "writeWorkspace": true
+  },
+  "budgetTokens": 200000,
+  "dependencies": [],
+  "goal": "恢复原始贴图渲染：下注/弃牌/看牌按钮使用 src/button 原图、双方头像使用 src/character 角色原图、钱包与押注显示 src/item_pic/金币.png 图标；游戏逻辑、规则与智能体零改动，仅替换 UI 绘制来源，并在缺图时安全回退。",
+  "maxConcurrent": 2,
+  "maxDepth": 1,
+  "owner": "pi-session:01a15d4a-59f0-70f9-85ab-6adf6323a3cc",
+  "revision": 1,
+  "scope": [
+    "UI 层 ui/：保留策略的 Draw_Pic 收敛为 ui/ 薄渲染层，业务状态一律向 core 查询（消除自行记账）；主循环改为 pygame.event.get() 驱动状态机，任何分支不得阻塞；time.sleep 全部移除并替换为可注入节奏器（real / fixed-step / immediate）；人类输入改非阻塞 poll_input()，等待期间持续重绘并响应 QUIT；RepeatedTimer 加锁 + 幂等 stop + daemon + 异常隔离或改由帧 tick 驱动；资源路径集中管理（pathlib 相对包根），修复 '../game_exercise/'、'../myclient/' 坏路径；pygame.Rect 移出 const 类体定义期"
+  ],
+  "taskId": "p7-textures"
+}

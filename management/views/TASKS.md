@@ -8,6 +8,7 @@
 - p4-scripts@1：建立 scripts/ 训练与评估入口：参数化训练（回合/种子/设备/输出目录→run/）、无头对战评估、同种子逐位可复现；产物不进入 git。；已批准；依赖 p3-agents
 - p5-ui@1：把 UI 重构为事件驱动、零阻塞的薄渲染层：可注入节奏器替代 time.sleep、非阻塞 poll_input 响应 QUIT、状态一律向 core 查询、资源路径集中管理；并让保留策略在真实显示下完整走完一局且 AI 使用已训练权重。；已批准；依赖 p4-scripts
 - p6-quality@1：质量收尾：建立 CI（ruff+pytest），补齐 README 架构与入口说明，验证干净环境安装可跑通全部入口，产出逐条对照 r5 successCriteria 的收尾报告。；已批准；依赖 p5-ui
+- p7-textures@1：恢复原始贴图渲染：下注/弃牌/看牌按钮使用 src/button 原图、双方头像使用 src/character 角色原图、钱包与押注显示 src/item_pic/金币.png 图标；游戏逻辑、规则与智能体零改动，仅替换 UI 绘制来源，并在缺图时安全回退。；已批准；依赖 无
 
 ```mermaid
 graph TD

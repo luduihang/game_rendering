@@ -4,31 +4,28 @@
 
 
 
-<!-- session-in-progress:start=2026-10-21T09:09:58.050Z -->
-## 2026-10-21 18:03 — P3/P4/P5 全部完成（提交 `b869030` / `414b3ad` / `e0263e1`）。
+## 2026-10-21 18:16 — 已重启完成，现在**只剩一个实例**。
 
-## 最终状态
+```
+PID      509569
+实例数   1
+窗口     炸金花 · 人类 vs DQN  (1028x8...
+已重启完成，现在**只剩一个实例**。
 
-| 阶段 | 结果 |
-|---|... _(in progress)_
-P3/P4/P5 全部完成（提交 `b869030` / `414b3ad` / `e0263e1`）。
+```
+PID      509569
+实例数   1
+窗口     炸金花 · 人类 vs DQN  (1028x816)
+异常     无
+```
 
-## 最终状态
+## 顺带说明
 
-| 阶段 | 结果 |
-|---|---|
-| **P3 agents/** | `BaseAgent` + `DQN` + `Robot`；**D8** 维度自适应、**D9** 真实权重生效 |
-| **P4 scripts/** | `train.py` / `evaluate.py`，同种子**逐位可复现**，产物进 `run/` |
-| **P5 ui/** | `clock` / `theme` / `render` / `app`；**D7 全部修复** |
+刚才那个"两个窗口"是我上一轮遗留的：我在 `p7` 提交后又启动了一次，没关旧进程。现在清理了 4 个残留实例（`482477` `482480` `507974` `508870`），只用新的这一个。
 
-## 缺陷修复对照（同一脚本，P0 时为红）
+如果你觉得窗口位置（屏幕右侧偏上）不合适，告诉我目标坐标，我用 `SDL_VIDEO_WINDOW_POS` 定位；或者你想直接居中/最大化也可以。
 
-| 缺陷 | P0 基线 | 现在 |
-|---|---|---|
-| D1 看牌结算 | `bug=4` 牌小者获胜 | **`passed=4`** |
-| D2 rest_option | 押 100 后仍为 0 | **`passed=5`**（含坏路径与 pygame 解耦） |
-| D4 滞后 done | 结束后多走 1 步...
-<!-- end-session-in-progress -->
+另外提醒一句：**窗口标题栏之外没有菜单**，退出请用 `Esc` 或右上角关闭按钮——直接 `kill` 也能退，但 `Esc` 走的是正常的 `pygame.quit()` 路径。
 ## 2026-10-21 17:08 — Line 6 is empty — so it's 5 real events plus a trailing newline, exactly as befo...
 Line 6 is empty — so it's 5 real events plus a trailing newline, exactly as before. No corruption, no stale lock. Your data is clean.
 
