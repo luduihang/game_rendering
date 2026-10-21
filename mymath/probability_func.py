@@ -1,9 +1,7 @@
-import numpy as np
-import math
-from .func_const import *
-import matplotlib.pyplot as plt
 
+import numpy as np
 from scipy.signal import convolve
+
 
 def convolution_of_functions(f1, f2):
     # 减少采样点
@@ -28,7 +26,6 @@ def convolution_of_functions(f1, f2):
     pdf_final = convolved_samples / normalization_factor
 
     # 计算均值
-    mean_value = np.trapezoid(convolved_samples_normalized * pdf_final, convolved_samples_normalized)
 
     def pdf_function(x_values):
         return np.interp(x_values, convolved_samples_normalized, pdf_final)
@@ -94,8 +91,6 @@ def mapping_dict(array1, array2, known_mapping):
     mapping_dict_arr[0] = mapping_dict
     mapping_dict_arr[1] = reverse_mapping_dict
     # 使用反向映射字典查找array1中的元素
-    element_in_array2 = '1'
-    corresponding_element_in_array1 = reverse_mapping_dict.get(element_in_array2, None)
     # print(f"Element in array1 corresponding to '{element_in_array2}' in array2 is: {corresponding_element_in_array1}")
     return mapping_dict_arr
 

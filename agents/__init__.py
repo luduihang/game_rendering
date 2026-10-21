@@ -4,7 +4,7 @@
 """
 
 from agents.base import BaseAgent, Transition
-from agents.dqn import DQN, DQNConfig, DQNAgent, StateEncoder, checkpoint_dims
+from agents.dqn import DQN, DQNAgent, DQNConfig, StateEncoder, checkpoint_dims
 from agents.robot import Robot, RobotConfig
 
 __all__ = [

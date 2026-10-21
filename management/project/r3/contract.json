@@ -1,0 +1,84 @@
+{
+  "changeReason": "r3 = r2 + 人工审核结论 + 用户提出的阻塞式时序缺陷。订正四项事实错误：F1 D5 撤销「get_state 读到对手手牌/信息泄漏」结论（证据：show_inform 声明玩家0=cards1，且 init_dick(['1','0'],cards2) 使机器人持 cards2 为玩家1，DQN 为玩家0，故 get_state 读 cards1 为本人手牌，无泄漏；真实问题是 __init__ print 标签与 show_inform 自相矛盾）；F2 D4 范围缩至 game_room_deepseek_cp.py（draw.py 用 if not room.finish 本就正确）；F3 D3 从已核实缺陷降级为 API 健壮性要求并移出先红后绿清单（看牌费用固定为 options[rest_option]，无门槛可校验；弃牌后 finish=True 使外层循环立即退出，无可观测差异）；F4 D2 明确 Game_room 的 rest_option = action 在动作合法不变量下等价于运行最大值（本就正确），bug 仅在 draw.py 的 min()。新增 D7 阻塞式时序与事件循环缺陷（人工提出）：D7-a time.sleep 散落于步进与渲染之间（draw.py 3s、draw_me_vs_DQN.py 每步 1.5s×2）；D7-b check_button_click 的 while not signal 忙等独占事件泵，等待期间 QUIT 无法响应且无法重绘、clock.tick 失效；D7-c RepeatedTimer 线程不安全（无锁竞态、stop() 在未 start 时 _timer 为 None 触发 AttributeError、next_call 累积漂移、回调异常静默断链）；D7-d 模块 import 期副作用（draw_me_vs_DQN.py 文件级 model.load_state_dict）使 UI 启动与资源可用性硬耦合。据此把 Phase 5 升格为「时序与事件循环重构」，要求事件驱动状态机、禁止阻塞、sleep 替换为可注入节奏器、人类输入非阻塞 poll、headless 单步耗时断言与 QUIT 响应回归测试。补充缺失项：分支策略 refactor/arch-v2、可复现性验证算力边界、UI↔core 状态一致性硬断言、pyproject.toml/ruff 落位、baseline 复现脚本入库、预算 3M→4M。移除 r2 中已证伪的 D5/D3 先红后绿验收项。",
+  "goal": "在不新增游戏功能、不重训模型的前提下，把 game_exercise 从「根目录平铺脚本 + 逻辑复制粘贴 + 模块级副作用 + 阻塞式时序控制」重构为分层、可测试、可复现、事件驱动的 Python 包：core/（牌与规则，纯逻辑、无 pygame）、agents/（BaseAgent + DQN + Robot）、ui/（pygame 薄渲染层，事件驱动、零阻塞）、scripts/（参数化训练与评估入口）。修复已核实的规则与数据缺陷，用 22100 手穷举精确表替代 2000 次蒙特卡洛胜率估计，消除散落的 time.sleep 与线程不安全定时器，补齐依赖锁定、测试与静态检查。",
+  "inScope": [
+    "Phase 0 基线核实（阻塞项）：用 bash/grep 枚举真实文件清单、import 图、git 跟踪状态、现有依赖版本、draw_*/nodraw_* 副本数、sleep/threading 调用点全量清单；修订本 PRD 中标注为「未核实」的条目后才进入 Phase 1；产出 baseline_report.md（含看牌 bug、发牌偏差、单步耗时、阻塞点的实际行为快照）；baseline 复现脚本入库为回归基线（tests/baseline/）",
+    "仓库卫生：新增 .gitignore；将 __pycache__/、*.pth、remember.txt、统计 png 从索引移除（git rm --cached，保留工作区文件）；备份/ 目录整体移出仓库归档到仓库外（需审批）；重写 README（结构、入口、运行方式）",
+    "依赖管理：pyproject.toml 统一承载依赖与 ruff/pytest 配置（requirements.txt 由 pyproject 导出或二选一，Phase 1 定稿），锁定 pygame/torch/numpy/scipy/matplotlib 版本；移除 draw*.py 中未使用的 from sympy import false；替换 probability_func.py 中已废弃的 np.trapz（numpy 2.x → np.trapezoid）",
+    "核心包 core/：Card/Rank/Suit 数据模型、牌型判定六类、比大小（含平局与花色决胜）、押注与结算规则；以一次性生成的 C(52,3)=22100 穷举精确表替代 Cards_Probability 的 2000 次抽样，胜率变为确定性精确值；消除 card_deck.py 的模块级 import 副作用（demo 代码移入 tests/ 或 __main__）",
+    "修复已核实缺陷（每项附回归测试）：D1 看牌结算忽略 whose_turn 导致败方判胜；D2 draw.py::update_inform 的 rest_option = min(...) 与规则要求的「不低于已出现的最高押注档」不符（Game_room 的 rest_option = action 在动作合法不变量下等价于运行最大值，本就正确，不得改动其语义）；D4 game_room_deepseek_cp.py::main 训练循环用滞后标志 if not done，导致玩家动作已结束对局后对手仍在已结束房间上行动并污染经验回放（draw.py 使用 if not room.finish，无此问题）",
+    "修复已核实数据缺陷：D6 Cards.draw_cards_plus 三抽一取最优胜率，弃 6 张不回堆，发牌非均匀，与真实牌局语义不符（穷举胜率表与有偏发牌分布不匹配；修复会改变公平性并使旧 .pth 失效，列为人工审批项）",
+    "D5 降级（不作缺陷修复）：DQNAgent.get_state(room, 0) 读 cards1 经核实为本人手牌，不存在信息泄漏；真实问题仅为 game_room_deepseek_cp.py::__init__ 中 print(「机器人的手牌是」, cards1) 与 show_inform()（玩家0=cards1）标签自相矛盾。处理方式：修正标签/注释并在 core 中以具名属性（own_hand/opponent_hand）消除歧义，不改变状态空间语义，不使旧模型失效",
+    "修复 D7 阻塞式时序与事件循环缺陷（Phase 5 核心）：D7-a 散落于步进与渲染之间的 time.sleep（draw.py 3s、draw_me_vs_DQN.py 每步约 1.5s×2）；D7-b check_button_click 的 while not signal 忙等独占事件泵，等待期间 QUIT 不可响应、无法重绘、clock.tick 失效；D7-c algorithm.py::RepeatedTimer 线程不安全（is_running 无锁、stop() 在未 start 时 _timer 为 None、next_call 累积漂移、回调异常静默断链）；D7-d draw_me_vs_DQN.py 文件级 model.load_state_dict 的 import 期副作用使 UI 启动与权重文件硬耦合",
+    "去重：Game_room 与 DQN/DQNAgent 各收敛为唯一实现，提供统一 API（get_state / get_action / step）；旧副本标记 deprecated 并记录删除审批",
+    "智能体层 agents/：BaseAgent 接口（act / observe / reset / save / load）；DQN 独立可配置模块（超参 dataclass 化、经验回放、目标网络、remember.txt 持久化改为显式可选、权重加载改为显式工厂函数而非 import 副作用）；robot.py 与 robot2.py 合并为单一可配置 Robot（保守/激进两档参数），显式 import numpy",
+    "训练/评估入口 scripts/：参数化（对手类型、回合数、随机种子、设备、输出目录→run/）；同种子两次运行 state_dict 逐位一致；产物不进 git；提供无头对战入口供 UI 复用",
+    "UI 层 ui/（升格为时序与事件循环重构）：draw*.py 收敛为 ui/ 薄渲染层，业务状态一律向 core 查询；主循环改为 pygame.event.get() 驱动的状态机，任何分支不得阻塞；time.sleep 全部移除，替换为可注入的节奏器（tick_policy：真实时间 / 固定步长 / 立即，测试用立即）；人类输入改非阻塞 poll_input()，等待期间窗口可重绘并可响应 QUIT；RepeatedTimer 要么加锁+幂等 stop+异常隔离，要么删除改为帧循环 tick 驱动；资源路径集中管理（pathlib 相对包根），修复 '../game_exercise/'、'../myclient/'；把 pygame.Rect 从 const 类体定义期移到函数内，解耦 import pygame",
+    "测试与质量：pytest 覆盖牌型六类+边界/平局、规则关键路径、D1/D2/D4/D6 回归、时序契约（QUIT 在等待期间被响应、headless 单步耗时上限、零 sleep 断言）、智能体接口冒烟、UI↔core 状态一致性硬断言（UI 显示的押注/金币必须等于 core 状态）；ruff 基线清零；CI（ruff+pytest）"
+  ],
+  "outOfScope": [
+    "不新增游戏功能：不做联网对战、新角色、新玩法、新规则",
+    "不重训模型、不以提升模型胜率为目标（只保证训练入口可复现；完整重训属后续独立决策）",
+    "不重写 git 历史（仅停止跟踪新增提交中的产物文件）",
+    "不重新设计或替换美术/音频资源（仅允许移动路径与重命名文件，内容不变）",
+    "不做发布打包（pip 发布、PyInstaller、Docker 等）",
+    "不改动 management/ 治理目录内容",
+    "不修改 mymath/func_const.py 中 conv_func 的概率密度启发式公式本身（仅做 np.trapz 替换与 numpy 显式导入）；该策略调参不在本轮范围",
+    "不处理 src/ 下中文资源文件的重命名（列为单独后续审批项，本轮仅修复路径引用）",
+    "不引入 asyncio 或第三方事件循环框架：UI 采用 pygame 事件驱动 + 可注入节奏器，避免在 pygame 上叠加第二套调度模型"
+  ],
+  "successCriteria": [
+    "已核实缺陷各有一条回归测试并在修复后通过：D1（看牌结算）、D2（draw.py rest_option 取 min）、D4（滞后 done 标志导致已结束房间被继续行动）、D6（发牌非均匀，若 R1 决定修复）；D1/D2/D4 的测试须在修复前失败（以 git stash 或修复前快照证明）",
+    "D7 时序缺陷全部消除且可机器验证：(a) grep 断言 ui/ 与 scripts/ 中不存在 time.sleep；(b) headless 回归测试证明等待/思考期间 SDL_QUIT 事件被及时响应且窗口可持续重绘；(c) headless 单步耗时断言（不含渲染的 core step < 5ms，含渲染的 UI 帧 < 50ms）；(d) 节奏器可注入为「立即」模式使整局在测试中零等待完成",
+    "RepeatedTimer 若保留则具备：线程安全标志、未启动时 stop() 不抛异常、回调异常不静默断链（各有单测）；若删除则 grep 断言仓库无 threading.Timer 用法",
+    "手牌胜率为 C(52,3)=22100 穷举精确值，同一手牌任意次调用返回同一结果；全库不再存在 2000 次蒙特卡洛胜率路径（grep 验证 Cards_Probability 抽样循环已移除）",
+    "牌型判定六类全覆盖且含边界/平局用例，pytest 全绿",
+    "Game_room 与 DQN/DQNAgent 定义各只剩一份实现（grep 类定义与 torch.nn.Module 子类计数验证）；不存在任何模块在 import 期加载 .pth 权重（grep 断言 load_state_dict 仅出现在函数体内）",
+    "core/ 与 agents/ 在无 pygame 环境可导入（静态检查 + 无 pygame 的 venv 导入测试）",
+    "UI↔core 状态一致性：UI 渲染所用的押注/金币/轮次数值与 core 状态逐字段相等（断言测试），UI 不再自行记账",
+    "固定随机种子下两次训练运行产出逐位一致（可复现性验证脚本通过，比对模型 state_dict 哈希）；验证运行限定为 ≤20 回合、CPU-only、单次 ≤10 分钟",
+    "干净虚拟环境按 pyproject/requirements 安装后可跑通训练、评估、UI 冒烟（SDL_VIDEODRIVER=dummy）",
+    "版本库不再跟踪 __pycache__、*.pth、remember.txt、统计 png；ruff 检查通过；README 可指导新环境从零跑通",
+    "Phase 0 baseline_report.md 经人工确认，且 PRD 中全部「未核实」标注均已消除或修正；baseline 复现脚本入库并可一键运行"
+  ],
+  "humanApprovalTriggers": [
+    "删除、移动或归档 备份/ 目录及任何美术/音频/模型资产（含 dqn_*.pth 旧训练产物，默认只归档不删除）",
+    "重命名中文文件/目录名（如 src/card_pic/ 下中文文件名、mymath/概率大小映射、introduction）",
+    "修复 D1 看牌结算（whose_turn 语义）",
+    "修复 D6 发牌语义（draw_cards_plus 三抽一取最优 → 均匀发牌）——会改变对局公平性并使旧模型失效，必须先确认是否修复",
+    "任何改变 DQN 状态空间语义的改动（当前 r3 已确认 D5 无需修复，若 Phase 0 实测推翻此结论则必须先请示）",
+    "删除 algorithm.py::RepeatedTimer 或改变其调度语义（D7-c）",
+    "新增、升级或移除任何第三方依赖（含引入 asyncio/编辑器同类框架）",
+    "任何 git 合并到 main（integrateBranch 需人工执行）",
+    "超出阶段计划或 PRD 范围的改动",
+    "完整重训模型或任何超过 10 分钟的训练运行（可复现性验证限定 ≤20 回合、CPU-only）"
+  ],
+  "authority": {
+    "commitBranch": true,
+    "integrateBranch": false,
+    "paths": [
+      "."
+    ],
+    "readRepository": true,
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write"
+    ],
+    "writeWorkspace": true
+  },
+  "delegationPolicy": {
+    "allowInternalTasks": true,
+    "maxConcurrent": 2,
+    "maxDepth": 1
+  },
+  "resourceLimits": {
+    "budgetTokens": 4000000
+  },
+  "prd": "# PRD：game_exercise 架构优化（r3）\n\n## 1. 背景\ngame_exercise 是 Python + pygame 的「炸金花」三张牌博弈游戏与 DQN 训练实验仓库。现状：根目录平铺约 15 个脚本，`draw_*`/`nodraw_*` 互相复制粘贴 `Game_room`/`DQN`/`DQNAgent`；`mymath/` 为 AI 策略包；`src/` 为美术与音频资产。\n\n**证据获取限制**：r1/r2 分析在基线 DRAFT 下进行，bash/grep/目录枚举被治理层拦截，只能定向读文件取证。文件数量类统计标注「未核实」，必须在 Phase 0 用 bash 落定后才可排期。\n\n## 2. 已核实规则与数据缺陷\n\n### D1 看牌结算忽略 whose_turn（严重，确认）\n`game_room_deepseek_cp.py::Game_room.get_choice`，action==5 分支只比较 `cards1_value < cards2_value` 就定 winner，完全无视 `self.whose_turn`。代码自己的注释已写明正确语义：「玩家0看牌 如果玩家0小 winner = 1 / 玩家1看牌 如果玩家1小 winner = 0」。结果是看牌方输局反而被判胜。\n\n### D2 rest_option 语义不一致（确认，范围收窄）\n- **规则文本**（`algorithm.py::show_help_font`）：「每轮玩家可以押注大小的最小选项是当前所有玩家押注选项的最大值」。\n- `Game_room.get_choice`：`self.rest_option = action`。在「动作合法」不变量下（`legal_actions = range(rest_option, 6)` 已限制下限）**等价于运行最大值 → 本就正确，不得改动语义**。\n- `draw.py::Draw_Pic.update_inform`：`self.rest_option = min(self.rest_option, self.option)` → **真 bug**（门槛只会降低）。且 `__init__` 里 `rest_option = 0` 是 int，被后续分支当索引用，两种含义混用同一字段。\n- 旁证：同仓库 `draw_me_vs_DQN.py::update_inform` 写的是 `max(self.rest_option, self.option)` —— 同一项目内已存在正确版本，说明这是复制分叉造成的漂移。\n\n### D4 训练循环滞后 done 标志（确认，仅一处）\n`game_room_deepseek_cp.py::main`：`while not room.finish:` 内用 `if not done:` 守卫对手行动，而 `done` 只在其后才置 True → 玩家动作已结束对局时，对手仍在已结束的房间上行动，污染经验回放。\n**订正 r2**：`draw.py::__main__` 用的是 `if not room.finish:`，**没有此问题**，r2 声称「两者均为 if not done」举证错误。\n\n### D6 发牌非均匀（确认，语义分叉点 R1）\n`card_deck.py::Cards.draw_cards_plus`：抽 3 组候选、各算胜率、只留最高的一组，其余 6 张弃置不回堆。双方手牌来自「3 次抽样取最大」的有偏分布。⇒ 穷举精确胜率与真实发牌分布**不匹配**，`Cards_Probability` 只能当「相对强度」。是否修复须人工决策（修则不公平面变化的对局语义改变、旧 .pth 失效）。\n\n### D5 已撤销（r2 结论错误，须记录以免重犯）\nr2 断言 `get_state(room, 0)` 读到对手手牌、构成信息泄漏。**经核实该结论不成立**：\n- `show_inform()`：`玩家0的手牌是 cards1` / `玩家1的手牌是 cards2`；\n- `opponent_robot.init_dick(['1','0'], room.cards2)`：机器人 id `'1'` 持 **cards2** → 机器人是玩家1；\n- 训练循环：`reward = all_bet if room.winner == 0 else -player_bet[0]` → DQN 是玩家0。\n⇒ DQN 的 `get_state` 读 `cards1` 读的是**自己的牌**，逻辑自洽、无泄漏。\n真实遗留问题是 `__init__` 里 `print(\"机器人的手牌是\", self.cards1)` 与 `show_inform` 的标签**自相矛盾**（前者说 cards1 属机器人，后者说 cards1 属玩家0）。处理：修正标签 + core 中用 `own_hand`/`opponent_hand` 具名属性消除歧义，**不改状态空间语义、不使旧模型失效**。\n\n### D3 降级为 API 健壮性要求（r2 定性不准）\n- 「action=5 不看 rest_option 门槛」不成立：看牌费用固定为 `options[rest_option]`，规则就是按当前单注自动收费，无可校验门槛。\n- 「弃牌后仍推进 whose_turn/circle」代码确实执行，但 `finish=True` 后外层 `while not room.finish` 立即退出，**无可观测行为差异**，写不出失败测试。\n- 唯一实质点（已并入 D4 相关）：对已 finish 的房间继续调 `get_choice` 会改写 `winner`。\n⇒ core 侧把非法动作做成显式 `IllegalAction` 异常作为**契约测试**，不列入「先红后绿」bug 清单。\n\n## 3. 已核实时序与并发缺陷（D7，本轮新增，人工提出）\n\n### D7-a time.sleep 散落在步进与渲染之间\n`draw.py`：每步 `time.sleep(3)`；`draw_me_vs_DQN.py`：DQN 回合与人类回合各 `time.sleep(1.5)`，外加每局开始 `time.sleep(1.5)`。一局 N 步即 N×1.5~3 秒的硬阻塞。sleep 还隐式承担了「让画面停留可读」的唯一职责 —— 因此不能简单删除，必须重构为可注入的节奏器（真实时间 / 固定步长 / 立即三档，测试用「立即」）。\n\n### D7-b 阻塞式事件泵劫持事件循环\n`draw_me_vs_DQN.py::Draw_Pic.check_button_click`：\n```\nsignal = False\nwhile not signal:\n    for event in pygame.event.get(): ...\n```\n人类回合期间独占事件队列并在 Python 层忙等：等待期间 `SDL_QUIT` 无法被响应（窗口无法关闭）、无法重绘、`clock.tick(20)` 完全失效 → 表现为 UI 冻死。这是「事件循环被业务逻辑劫持」，不是渲染性能问题。\n\n### D7-c RepeatedTimer 线程不安全\n`algorithm.py::RepeatedTimer`：`is_running` 为裸 bool 无锁保护（start/stop 竞态）；`stop()` 在未 `start()` 时 `self._timer is None` → `AttributeError`；`next_call` 逐次累加导致漂移；`_run` 内无 try，回调异常会静默掐断定时器链。与 pygame 事件循环共存时是卡顿与偶发崩溃来源。\n\n### D7-d import 期副作用耦合启动路径\n`draw_me_vs_DQN.py` 在**文件级**执行 `model = DQN(9,6)` + `model.load_state_dict(torch.load('dqn_model_0.pth'))` + `model.eval()`。⇒ import 该模块即读权重文件，文件缺失/不匹配则整个模块导入失败，UI 启动与权重可用性硬耦合。与 `card_deck.py` 的模块级 print、`const.py` 类定义期 `pygame.Rect` 同属一类反模式。\n\n### 根因归纳\n单步延迟 = Monte Carlo（数千次牌型计算）+ sleep(1.5s) + 阻塞事件泵，三者叠加，被误判为「渲染慢」。修复必须同时处理：计算（穷举查表）、时序（节奏器）、事件（非阻塞状态机）。\n\n## 4. 已核实的其他工程问题\n1. **性能**：`Cards_Probability.get_probability/get_state` 每次 2000 轮 `reset_deck+shuffle+Get_Value`；`draw_cards_plus` 每手调 3 次、`Robot.init_dick` 再调 1 次 → 单局上万次牌型计算；`get_state` 与 `get_probability` 代码完全重复。C(52,3)=22100 可一次枚举成表，之后 O(1)。\n2. **模块级副作用**：`card_deck.py` 底部 import 期执行 `Cards_Probability(cards1).get_probability()` 并 print；同文件有大段注释掉的 1000000 次实验代码。\n3. **隐式依赖**：`mymath/robot.py`/`robot2.py` 用 `np.random.choice` 但无 `import numpy as np`，靠 `from .probability_func import *` 星号导入泄漏；被 ruff 清理即崩。\n4. **重复实现**：Robot 与 Robot2 约 130 行近乎逐行相同，差异仅 `cal_value` 系数与 `cal_final_option` 弃牌保护 → 应参数化。\n5. **UI 与逻辑耦合**：`Draw_Pic` 自维护 `rest_option/turn/option/all_bet/bets/player_money` 并自行复算押注，与 `Game_room` 形成两个事实来源（D2 的温床）；`draw.py::__main__` 复制整份训练循环。\n6. **坏路径与类定义期副作用**：`const.py` 硬编码 `'../game_exercise/src/...'` 与 `'../myclient/src/BGM/...'`（后者指向仓库外，必然失效）；`Mouce`/`button_spirit` 类体定义期调 `pygame.Rect(...)`，导致 `import const` 必须已 `pygame.init` —— 这是 core 无法脱离 pygame 的根因。\n7. **误依赖**：多个 `draw*.py` 顶部 `from sympy import false`，全文件未使用，白拖 sympy 进依赖树。\n8. **废弃 API**：`probability_func.py` 的 `np.trapz` 在 numpy 2.x 废弃，应改 `np.trapezoid`。\n9. **死代码**：`func_const.py::conv_func.arr_100` 从未被读取。\n10. **工程卫生（部分未核实）**：`__pycache__`、`*.pth`、`remember.txt`、统计 png 是否被 git 跟踪，是否存在 `requirements.txt`/`.gitignore`/`备份/`，根目录副本确切数量 —— 需 Phase 0 用 bash 核定。\n\n## 5. 用户\n仓库所有者本人，学习/实验用途。核心诉求：换机器一键装好跑通；能读懂架构；改规则时不怕碰坏别的脚本；**游戏界面不能卡死、不能靠 sleep 撑节奏**。\n\n## 6. 目标\n- **单一事实来源**：规则、牌型判定、DQN 网络各只有一份。\n- **确定性**：同种子训练逐位可复现；胜率是精确值不是抽样值。\n- **可测试**：核心规则全覆盖单测；每个真 bug 修复都有先红后绿回归。\n- **可分层**：core/ 与 agents/ 不依赖 pygame，无头可跑。\n- **零阻塞**：UI 事件驱动，任何分支不阻塞；节奏控制可注入；headless 可零等待跑完整局。\n\n## 7. 非目标\n见契约 outOfScope。特别说明：不动 `conv_func` 概率密度公式（属策略调参，非架构问题）；不引入 asyncio（避免在 pygame 上叠加第二套调度模型）。\n\n## 8. 关键风险与待决问题\n- **R1（阻塞）**：D6 发牌非均匀是否修复？修 = 公平性改变 + 旧 .pth 失效；不修 = 穷举胜率表只能当相对强度，保留 `Cards_Probability` 语义需重命名以免误导。**必须由人决策。**\n- **R2**：D1/D2 修复会改变现有对局结果，需人工确认「正确规则」定义（r3 已按规则文本给出，若无异议即可执行）。\n- **R3**：D5 已撤销，但 Phase 0 须用实测（打印 DQN 手牌 vs 传给机器人的牌）**再确认一次**接线；若实测推翻 r3 结论，立即挂起请示。\n- **R4**：环境未知（python/torch/pygame 版本）。Phase 0 建 venv 记录基线。\n- **R5**：中文文件名重命名牵连大量资产引用，已移出本轮。\n- **R6**：UI 时序重构涉及 `draw_*` 多份副本的收敛，工作量最大的是 Phase 5，需与 P4 串行以避免同工作区写冲突。\n\n## 9. 验收\n见契约 successCriteria，逐条可机器验证（grep 断言、pytest、headless 耗时与 QUIT 响应测试）。",
+  "plan": "# 阶段计划（r3）\n\n## 分支与提交策略（r3 新增）\n- 全流程在 `refactor/arch-v2` 特性分支上进行；不开子分支（maxDepth=1 的委派仅限只读分析）。\n- 每 Phase 至少一个 commit，commit message 前缀 `P0:`…`P6:`；修复类 commit 附「失败测试先行」的证据（先提交失败测试，再提交修复）。\n- `main` 的合并（integrateBranch）由人工执行，agent 不得自行合并。\n- 任何历史改写（rebase/squash 已推送提交）禁止。\n\n## Phase 0：基线核实与行为快照（阻塞后续全部阶段）\n- T0.1 环境基线：建 venv，安装现有可用依赖，记录 python/torch/pygame/numpy/scipy 版本\n- T0.2 仓库清单核实：`git ls-files`、`find` 枚举 .py、grep 计数 `class Game_room`/`class DQN`/`class DQNAgent`、`Cards_Probability`、`time.sleep(`、`threading.Timer`、`load_state_dict`、`from sympy`；检查 .gitignore/requirements.txt/备份/。**把 PRD 全部「未核实」条目落定并回写契约**\n- T0.3 行为快照：最小复现脚本对 D1/D2/D4/D6/D7 逐项产出「当前实际行为」记录（看牌判胜反转、draw.py rest_option 下降、已结束局对手仍行动、发牌分布统计、单步耗时分解=计算/sleep/事件泵、等待期 QUIT 丢失），入 `tests/baseline/` 作为长期回归基线\n- T0.4 接线复核（R3）：实测打印 DQN 手牌与传给机器人的牌，确认 D5 结论；不符则挂起请示\n- T0.5 语义决策确认：R1（D6 是否修复）、R2（D1/D2 规则定义）取得人工结论并写入契约\n- 验收：baseline_report.md 提交、基线脚本一键可跑、人工确认\n\n## Phase 1：仓库卫生与依赖锁定\n- T1.1 .gitignore + `git rm --cached` 产物（pycache/.pth/remember.txt/png）\n- T1.2 备份/ 归档到仓库外（审批项）；无扩展名文件处理（审批项）\n- T1.3 pyproject.toml 承载依赖与 ruff/pytest 配置并锁版本；移除 sympy 误依赖；`np.trapz`→`np.trapezoid`\n- T1.4 重写 README（结构、入口、运行方式）\n- 验收：`git status` 无未预期变更；新 venv 安装成功；ruff 可运行\n\n## Phase 2：core/ 核心包（TDD，最关键）\n- T2.1 Card/Suit/Rank + 牌型判定六类（含边界与平局）+ 花色决胜次序；测试先行\n- T2.2 穷举精确胜率表：枚举 C(52,3)=22100 建表，O(1) 查询；提供「击败概率」与「档位分箱」两种接口以兼容 `get_state` 与 Robot.win_rate；若 R1 决定不修 D6，则在命名与文档上明确其为「相对强度」而非真实胜率\n- T2.3 规则引擎 GameRoom：押注档位递增（沿用 Game_room 正确语义）、弃牌、看牌结算（D1 修复）、金币结算；非法动作抛 `IllegalAction`（D3 契约）；`own_hand`/`opponent_hand` 具名属性消除 D5 标签歧义\n- T2.4 D1/D2/D4 回归测试，接 Phase 0 失败基线\n- T2.5 旧脚本重复 Game_room 标记 deprecated（删除需审批）\n- 验收：pytest 全绿；grep 证明判定/结算逻辑唯一；D1/D2/D4 先红后绿证据留存\n\n## Phase 3：agents/ 智能体层\n- T3.1 BaseAgent 接口（act / observe / reset / save / load）\n- T3.2 DQN 独立模块：超参 dataclass 化、经验回放、目标网络、remember.txt 持久化显式可选；**权重加载改为显式工厂函数 `DQNAgent.from_checkpoint(path)`，禁止 import 期加载（D7-d）**\n- T3.3 Robot 合并：单类 + 保守/激进两档参数；显式 import numpy\n- T3.4 行为等价验证：同种子下新 Robot(激进档) 与旧 robot2 动作分布抽样一致\n- 验收：接口冒烟通过；行为等价抽样通过；`grep load_state_dict` 仅出现在函数体内\n\n## Phase 4：scripts/ 训练与评估入口\n- T4.1 参数化训练入口（对手/回合/种子/设备/输出目录→run/），修复 D4（结束即停）\n- T4.2 可复现性验证：≤20 回合、CPU-only、单次 ≤10 分钟，两次运行比对 state_dict 哈希\n- T4.3 无头对战/评估入口（agent vs robot，输出胜率与押注统计），供 UI 复用\n- 验收：无头跑通；可复现性脚本通过；run/ 不进 git\n\n## Phase 5：ui/ 时序与事件循环重构（D7，工作量最大）\n- T5.1 draw_* 副本收敛为 ui/ 包：只持渲染状态，押注/结算一律向 core 查询，删除自算逻辑与复制训练循环；新增 UI↔core 逐字段一致性断言\n- T5.2 事件驱动主循环：`pygame.event.get()` 驱动状态机，任何分支不得阻塞；`check_button_click` 的忙等改为非阻塞 `poll_input()`，等待期间持续重绘并响应 SDL_QUIT\n- T5.3 时序外置：删除全部 `time.sleep`，替换为可注入节奏器（real / fixed-step / immediate 三档；测试与 headless 用 immediate）\n- T5.4 RepeatedTimer 处置：加锁 + 幂等 stop + 回调异常隔离，或删除改由帧 tick 驱动（删除属审批项）\n- T5.5 资源路径集中管理（pathlib 相对包根），修复坏路径；`pygame.Rect` 移出类定义期\n- 验收：headless 冒烟通过；`grep time.sleep` 为空；等待期 QUIT 响应测试通过；单步耗时断言通过\n\n## Phase 6：质量收尾\n- T6.1 ruff 基线清零；CI（ruff + pytest）\n- T6.2 README 架构图 + 各入口说明；收尾报告对照 successCriteria 逐条勾选\n- 验收：CI 绿；收尾报告人工验收\n\n## 依赖关系\nP0（含 T0.4 接线复核与 T0.5 语义决策）→ P1 → P2 → P3 → P4 → P5 → P6。\n**P0 未通过不得进入 P2**（否则会在错误规则语义上写测试）。\nP4 与 P5 技术上可并行，但同工作区写入者必须串行，故按 P4→P5 顺序执行。\n\n## 调度\n每 Phase 1-3 个内部任务；maxDepth=1，maxConcurrent=2；同一工作区写入者串行。任何触发 humanApprovalTriggers 的动作先挂起请示，不得自行推进。",
+  "name": "game_exercise 架构优化（炸金花卡牌游戏 + DQN 训练实验重构）",
+  "projectId": "7804c9ee-239d-4f72-ac9a-34c915425455",
+  "revision": 3
+}

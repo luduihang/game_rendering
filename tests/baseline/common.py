@@ -1,54 +1,28 @@
-"""Phase 0 基线复现：公共工具。
+"""Phase 0 基线工具（已按重构后的架构改造）。
 
-用途：
-- 提供「精确手牌强度表」（穷举 C(52,3)=22100 手），用于给任意手牌算真实分位。
-- 提供输出格式助手，便于 run_all.sh 聚合。
-
-注意：本目录是「修复前失败行为」的固定基线，Phase 2 之后这些断言应随修复翻转。
-不要为了让它们变绿而修改它们 —— 它们的价值就在于记录当前错误行为。
+历史说明：P0 时这些脚本记录的是「修复前的错误行为」（红）。
+现在它们断言「修复后的正确行为」（绿）。修复前的红证据保留在
+``docs/BASELINE-REPORT.md`` 与 git 历史（提交 97a2737）。
 """
 
 import os
 import sys
-from itertools import combinations
-
-import numpy as np
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-SUITS = ["黑桃", "红心", "方块", "梅花"]
+from core.cards import Card, Suit, full_deck  # noqa: E402
+from core.evaluator import evaluate  # noqa: E402
+from core.strength import beats_probability, table_size  # noqa: E402
+
+SUITS = ["SPADE", "HEART", "DIAMOND", "CLUB"]
 RANKS = list(range(2, 15))
 
 
-def full_deck():
-    return [{"suit": s, "value": v} for s in SUITS for v in RANKS]
-
-
-def exact_value_table():
-    """穷举全部 22100 手三张牌，返回按强度升序排列的 value 数组。
-
-    这是 Phase 2 的 `core/` 精确表原型：用参考实现 Cards_Value.Get_Value
-    计算每手强度，排序后即可用二分查找得到「击败了多少比例的手牌」。
-    """
-    from card_deck import Cards_Value
-
-    hands = list(combinations(full_deck(), 3))
-    values = np.empty(len(hands), dtype=np.float64)
-    for i, hand in enumerate(hands):
-        values[i] = Cards_Value(list(hand)).Get_Value()
-    return np.sort(values)
-
-
-def percentile_of_value(sorted_values, value):
-    return float(np.searchsorted(sorted_values, value, side="left")) / len(sorted_values)
-
-
-def hand_percentile(sorted_values, hand):
-    from card_deck import Cards_Value
-
-    return percentile_of_value(sorted_values, Cards_Value(hand).Get_Value())
+def hand(*specs):
+    """hand(("SPADE", 14), ("HEART", 14), ("DIAMOND", 14))"""
+    return tuple(Card(Suit[s], r) for s, r in specs)
 
 
 def h(title):
@@ -59,19 +33,28 @@ def h(title):
 
 
 def check(name, ok, detail=""):
-    """ok=True 表示「符合规则预期」；False 表示记录到 bug。"""
-    tag = "PASS" if ok else "BUG "
-    line = f"[{tag}] {name}"
-    if detail:
-        line += f"\n         {detail}"
-    print(line)
+    print(f"[{'PASS' if ok else 'FAIL'}] {name}" + (f"\n         {detail}" if detail else ""))
     return ok
 
 
-def summary(code, passed, bugs, notes=""):
+def summary(code, passed, failed, notes=""):
     print()
     print("-" * 74)
-    print(f"BASELINE_RESULT {code}: passed={passed} bug={bugs}")
+    print(f"BASELINE_RESULT {code}: passed={passed} failed={failed}")
     if notes:
         print(f"NOTE: {notes}")
     print("-" * 74)
+
+
+__all__ = [
+    "Card",
+    "Suit",
+    "full_deck",
+    "evaluate",
+    "beats_probability",
+    "table_size",
+    "hand",
+    "h",
+    "check",
+    "summary",
+]

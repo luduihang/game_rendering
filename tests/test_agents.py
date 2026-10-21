@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from agents import DQN, DQNConfig, DQNAgent, Robot, RobotConfig, checkpoint_dims
+from agents import DQN, DQNAgent, DQNConfig, Robot, RobotConfig, checkpoint_dims
 from core.cards import Card, Suit
 
 REPO = Path(__file__).resolve().parent.parent
@@ -167,28 +167,17 @@ class TestRobot:
         ]
         assert not star_imports, f"不应存在星号导入: {star_imports}"
 
-    def test_behavior_matches_legacy_robot2(self):
-        """行为等价抽样：同一局面下，新旧实现的动作分布不应显著偏离。"""
-        from mymath.robot2 import Robot2
+    def test_strong_hand_is_more_aggressive(self):
+        """行为合理性：强牌比弱牌更倾向加注（迁移后不再依赖 legacy Robot2 对比）。"""
+        def bet_share(hand_cards):
+            robot = Robot(seed=99)
+            robot.init_dick(["1", "0"], hand_cards, hand=hand_cards)
+            counts = np.zeros(6)
+            for _ in range(400):
+                counts[robot.cal_final_option()["option"]] += 1
+            return counts[[0, 1, 2, 3]].sum() / counts.sum()
 
-        np.random.seed(1234)
-        new = Robot(seed=1234)
-        old = Robot2("1")
-        new.init_dick(["1", "0"], STRONG, hand=STRONG)
-        old.init_dick(["1", "0"], [c.to_legacy() for c in STRONG])
-
-        new_counts = np.zeros(6)
-        old_counts = np.zeros(6)
-        trials = 400
-        for _ in range(trials):
-            new_counts[new.cal_final_option()["option"]] += 1
-            old_counts[old.cal_final_option()["option"]] += 1
-
-        new_dist = new_counts / trials
-        old_dist = old_counts / trials
-        # 两者都用同一套公式与噪声区间，动作分布应高度接近
-        l1 = np.abs(new_dist - old_dist).sum()
-        assert l1 < 0.35, f"新旧 Robot 动作分布偏离过大（L1={l1:.2f}）"
+        assert bet_share(STRONG) > bet_share(WEAK)
 
 
 class TestLayeringAndImportPurity:

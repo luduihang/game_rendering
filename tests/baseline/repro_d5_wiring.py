@@ -1,85 +1,47 @@
-"""D5 复核（T0.4）：DQN 的 get_state 读到的到底是谁的牌？
+"""D5 回归：手牌归属必须无歧义（不存在信息泄漏）。
 
-r2 曾断言这里存在「信息泄漏」（玩家0 读到对手手牌）。r3 依据源码接线判断该结论
-不成立。本脚本用实测复核，避免把错误结论带进 Phase 3。
-
-判定依据（全部来自运行期实测，不依赖注释）：
-1. Game_room.__init__ 的 print 标签说 cards1 是「机器人」的牌；
-2. show_inform 的标签说 cards1 是「玩家0」的牌 —— 二者矛盾；
-3. opponent_robot.init_dick(['1','0'], room.cards2) → 机器人实际持有 cards2；
-4. DQNAgent.get_state(room, 0) 的特征来自 cards1。
-→ 若 3 与 4 同时成立，则玩家0(DQN) 看 cards1 = 自己的牌，无泄漏。
+P0 基线（修复前）：``__init__`` 打印「机器人的手牌是 cards1」，
+而 ``show_inform`` 打印「玩家0的手牌是 cards1」—— 同一份牌被描述成两个归属。
+实测确认 get_state 读的是本人手牌（无泄漏），真实问题只是标签矛盾。
+现由 core.GameRoom 的具名访问器 own_hand / opponent_hand 消除歧义。
 """
 
-import contextlib
-import io
+from common import check, h, hand, summary
 
-from common import check, h, summary
+from core.rules import GameRoom
 
-import game_room_deepseek_cp as G
-from card_deck import Cards_Probability
-from mymath.robot2 import Robot2
-
-
-def hand_str(cards):
-    return " ".join(f"{c['suit']}{c['value']}" for c in cards)
+STRONG = hand(("SPADE", 14), ("HEART", 14), ("DIAMOND", 14))
+WEAK = hand(("SPADE", 2), ("HEART", 3), ("DIAMOND", 5))
 
 
 def main():
-    h("D5 接线复核：DQN 状态特征来自哪一份手牌")
+    h("D5 手牌归属具名化（回归检查）")
 
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        room = G.Game_room()
-    init_prints = [ln for ln in buf.getvalue().splitlines() if "手牌" in ln]
+    room = GameRoom.new([STRONG, WEAK])
+    passed = failed = 0
 
-    print("Game_room.__init__ 的标签输出:")
-    for ln in init_prints:
-        print(f"  {ln}")
-    print("\nshow_inform 的标签输出（同一房间）:")
-    buf2 = io.StringIO()
-    with contextlib.redirect_stdout(buf2):
-        room.show_inform()
-    for ln in buf2.getvalue().splitlines():
-        if "手牌" in ln:
-            print(f"  {ln}")
+    cases = [
+        ("own_hand(0) == 玩家0的牌", room.own_hand(0) == STRONG),
+        ("opponent_hand(0) == 玩家1的牌", room.opponent_hand(0) == WEAK),
+        ("own_hand(1) == 玩家1的牌", room.own_hand(1) == WEAK),
+        ("opponent_hand(1) == 玩家0的牌", room.opponent_hand(1) == STRONG),
+    ]
+    for name, ok in cases:
+        passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+        check(name, ok)
 
-    contradictory = (
-        any("机器人的手牌" in ln for ln in init_prints)
-        and any("玩家0的手牌" in ln for ln in buf2.getvalue().splitlines())
-    )
-    check("__init__ 与 show_inform 的手牌标签自洽", not contradictory,
-          "两处都把 cards1 描述成不同的归属 → 遗留脏标签（D5 降级后的真实问题）")
+    # 状态编码必须使用本人手牌
+    from agents.dqn import StateEncoder
+    from core.strength import beats_probability
 
-    # 3) 机器人实际拿到哪份牌
-    robot = Robot2("1")
-    robot.init_dick(["1", "0"], room.cards2)
-    robot_has_cards2 = robot.cards == room.cards2
-    print(f"\ncards1 (玩家0? 机器人?) : {hand_str(room.cards1)}")
-    print(f"cards2 (玩家1?)          : {hand_str(room.cards2)}")
-    print(f"Robot2('1').init_dick(..., room.cards2) 后，机器人持有 cards2: {robot_has_cards2}")
+    encoder = StateEncoder()
+    state = encoder.encode(room.snapshot(), 0, room.own_hand(0))
+    ok = abs(float(state[3]) - beats_probability(STRONG)) < 1e-6
+    passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+    check("玩家0 的状态特征来自自己的手牌（无信息泄漏）", ok,
+          f"state[3]={float(state[3]):.4f} vs 本人手牌胜率 {beats_probability(STRONG):.4f}")
 
-    # 4) DQN 玩家0 的状态特征来自哪份牌
-    p_cards1 = Cards_Probability(room.cards1).get_state()
-    p_cards2 = Cards_Probability(room.cards2).get_state()
-    state_p0 = G.DQNAgent.get_state(None, room, 0)  # 仅用参数，不需要实例
-    onehot_index = int(state_p0[3:].argmax()) + 1
-
-    from_cards1 = onehot_index == p_cards1
-    from_cards2 = onehot_index == p_cards2
-    print(f"\n玩家0 的 get_state 档位 = {onehot_index}"
-          f"（cards1 档位={p_cards1}, cards2 档位={p_cards2}）")
-    print(f"特征来源 = cards1: {from_cards1} | = cards2: {from_cards2}")
-
-    no_leak = robot_has_cards2 and from_cards1
-    check("玩家0(DQN) 的状态特征来自自己持有的 cards1（无信息泄漏）", no_leak,
-          "机器人持 cards2、DQN 读 cards1 → 各自读自己的牌" if no_leak
-          else "接线与 r3 结论不符，需挂起请示")
-
-    passed = int(no_leak) + int(not contradictory)
-    bugs = 2 - passed
-    summary("D5", passed, bugs,
-            "无信息泄漏；唯一缺陷是 __init__ 标签与 show_inform 矛盾")
+    summary("D5", passed, failed, "具名访问器消除 cards1/cards2 归属歧义")
 
 
 if __name__ == "__main__":

@@ -1,64 +1,58 @@
-"""D6 复现：发牌分布是否偏离均匀。
+"""D6 回归：默认发牌必须均匀，偏置路径必须默认关闭且显著更强。
 
-Cards.draw_cards_plus()：抽 3 组候选（各 3 张），算每组强度，只保留最强的一组，
-其余 6 张弃置不回堆 → 双方手牌来自「3 次抽样取最大」的有偏分布。
-
-量化方法：用穷举 22100 手得到的精确强度表，把任一手牌映射到它的「分位」
-（击败了多少比例的手牌）。均匀发牌的期望分位分布 ≈ U(0,1)（均值 0.5）。
+P0 基线（修复前）：``draw_cards_plus`` 三抽一取最优并弃置其余 6 张 →
+手牌强度分位均值 0.766（均匀为 0.489），最强档占比 0.147（均匀 0.013，11 倍）。
 """
 
-import numpy as np
-from common import check, exact_value_table, h, hand_percentile, summary
+import random
 
-from card_deck import Cards
+from common import check, h, summary
+
+from core.dealing import deal_strength_biased, deal_uniform, new_deck, verify_uniformity
+
+SAMPLE = 300
 
 
-def sample_percentiles(table, kind, n):
-    deck = Cards()
-    deck.shuffle_deck()
-    out = []
-    need = 3 if kind == "uniform" else 9
+def sample(kind, n=SAMPLE):
+    rng = random.Random(20261021)
+    deck = new_deck(rng)
+    hands = []
     for _ in range(n):
-        if len(deck.cards) < need:
-            deck.reset_deck()
-            deck.shuffle_deck()
-        hand = deck.draw_cards(3) if kind == "uniform" else deck.draw_cards_plus(3)
-        out.append(hand_percentile(table, hand))
-    return np.array(out)
-
-
-def describe(name, arr):
-    print(f"  {name:22s} n={len(arr)} 均值={arr.mean():.3f} "
-          f"中位={np.median(arr):.3f} p25={np.percentile(arr,25):.3f} "
-          f"p75={np.percentile(arr,75):.3f} 最强档(>0.95)占比={(arr>0.95).mean():.3f}")
+        need = 3 if kind == "uniform" else 9
+        if len(deck) < need:
+            deck = new_deck(rng)
+        hands.append(deal_uniform(deck) if kind == "uniform" else deal_strength_biased(deck))
+    return hands
 
 
 def main():
-    h("D6 发牌分布：draw_cards_plus 相对均匀发牌的偏置")
+    h("D6 发牌分布（回归检查）")
 
-    table = exact_value_table()
-    print(f"精确手牌强度表：穷举 {len(table)} 手（C(52,3)）\n")
+    uniform_mean = verify_uniformity(sample("uniform"))
+    biased_mean = verify_uniformity(sample("biased"))
 
-    n = 150
-    uniform = sample_percentiles(table, "uniform", n)
-    biased = sample_percentiles(table, "biased", n)
+    print(f"  均匀 deal_uniform    分位均值 = {uniform_mean:.3f}")
+    print(f"  偏置 deal_strength_biased 分位均值 = {biased_mean:.3f}")
 
-    describe("均匀 draw_cards(3)", uniform)
-    describe("draw_cards_plus(3)", biased)
+    passed = failed = 0
+    ok = 0.44 < uniform_mean < 0.56
+    passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+    check("默认发牌均匀（分位均值≈0.5）", ok, f"实际 {uniform_mean:.3f}")
 
-    print()
-    ok_uniform = abs(uniform.mean() - 0.5) < 0.08
-    check("均匀发牌的分位均值应≈0.5", ok_uniform, f"实际 {uniform.mean():.3f}")
+    ok = biased_mean - uniform_mean > 0.15
+    passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+    check("偏置路径显著更强（仅作可选开关）", ok, f"差值 {biased_mean - uniform_mean:+.3f}")
 
-    shift = biased.mean() - uniform.mean()
-    ok_biased_detected = shift > 0.10
-    check("draw_cards_plus 应被检出显著偏强（均值上移）", ok_biased_detected,
-          f"均值差 {shift:+.3f}（偏置路径{(biased.mean()):.3f} vs 均匀 {(uniform.mean()):.3f}）")
+    import inspect
 
-    passed = int(ok_uniform) + int(ok_biased_detected)
-    bugs = 2 - passed
-    summary("D6", passed, bugs,
-            "偏置=3抽1取最强，且弃 6 张不回堆；穷举表口径需按契约 D-R1 改为默认均匀发牌")
+    import scripts.env as env_mod
+
+    src = inspect.getsource(env_mod)
+    ok = "deal_strength_biased" not in src
+    passed, failed = (passed + 1, failed) if ok else (passed, failed + 1)
+    check("训练/对局环境只使用均匀发牌", ok)
+
+    summary("D6", passed, failed, "默认均匀；偏置逻辑保留但不被任何默认路径调用")
 
 
 if __name__ == "__main__":

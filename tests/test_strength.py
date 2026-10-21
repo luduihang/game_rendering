@@ -1,5 +1,6 @@
 """穷举精确强度表测试：确定性、正确性、性能（对比基线的 30.8ms 蒙特卡洛）。"""
 
+import itertools
 import random
 import time
 
@@ -53,7 +54,9 @@ def test_monotonic_matches_exhaustive_pairwise():
 
 
 def test_strength_bin_ranges():
-    bins = {strength_bin(tuple(hand)) for hand in random.Random(7).sample(list(__import__("itertools").combinations(full_deck(), 3)), 500)}
+    combos = list(itertools.combinations(full_deck(), 3))
+    sample = random.Random(7).sample(combos, 500)
+    bins = {strength_bin(tuple(hand)) for hand in sample}
     assert bins <= {1, 2, 3, 4, 5, 6}
     assert min(bins) >= 1 and max(bins) <= 6
 

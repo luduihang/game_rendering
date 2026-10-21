@@ -1,0 +1,24 @@
+{
+  "currentSessionId": "8a322ca8-1c65-4e8c-81a0-a43a8e089c47",
+  "previousSessionId": "c49ab02e-7162-4886-983a-e73eca262b55",
+  "previousSessionFile": "/home/kipley/.pi/agent/sessions/--home-kipley-Documents-code-learning-game_exercise--/2026-10-21T09-09-53-276Z_01a15db9-63fc-77b3-90b2-9dceaa7d9bc6.jsonl",
+  "previousSessionProject": "/home/kipley/documents/code/learning/game_exercise",
+  "projectKey": "/home/kipley/documents/code/learning/game_exercise",
+  "cumulative": {
+    "inputTokens": 455016,
+    "outputTokens": 191317,
+    "cacheReadTokens": 34933760,
+    "cacheWriteTokens": 0,
+    "cost": 0,
+    "lessonHits": [],
+    "skills": [],
+    "gates": "unknown",
+    "models": [
+      "deepseek-flash"
+    ],
+    "turnIndex": 156,
+    "userTurns": 11,
+    "adjustedCost": 0,
+    "warnedCost": false
+  }
+}
