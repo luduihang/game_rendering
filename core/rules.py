@@ -59,6 +59,7 @@ class GameRoom:
     players: tuple[Player, ...]
     whose_turn: int = 0
     rest_option: int = 0
+    circle: int = 1
     all_bet: int = DEFAULT_ANTE * 2
     finish: bool = False
     winner: int | None = None
@@ -108,6 +109,7 @@ class GameRoom:
         return {
             "whose_turn": self.whose_turn,
             "rest_option": self.rest_option,
+            "circle": self.circle,
             "all_bet": self.all_bet,
             "bets": tuple(p.bet for p in self.players),
             "money": tuple(p.money for p in self.players),
@@ -136,6 +138,8 @@ class GameRoom:
         self.history.append((actor, int(action)))
         if not self.finish:
             self.whose_turn = 1 - actor
+            if self.whose_turn == 0:
+                self.circle += 1
 
     def _bet(self, actor: int, action: Action) -> None:
         if int(action) < self.rest_option:
