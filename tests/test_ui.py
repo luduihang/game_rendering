@@ -206,3 +206,98 @@ class TestEntryAndAssets:
 
         assert set(asset_paths()) >= {"background", "card_back", "card_dir", "font_main", "font_ui"}
         assert isinstance(missing_assets(), list)
+
+
+class TestOriginalTextures:
+    """原始贴图接入（下注按钮 / 玩家头像 / 金币图标）。"""
+
+    def test_button_textures_exist_for_all_actions(self):
+        from ui.theme import BUTTON_IMAGES, button_image_path
+
+        assert set(BUTTON_IMAGES) == set(range(6))
+        for action, path in ((a, button_image_path(a)) for a in BUTTON_IMAGES):
+            assert path is not None and path.exists(), f"动作 {action} 缺少按钮贴图"
+            assert path.parent.name == "button"
+
+    def test_button_textures_are_loaded_and_2to1(self):
+        from ui.render import Renderer
+
+        renderer = Renderer()
+        for action in range(6):
+            surface = renderer.button_surface(action)
+            assert surface is not None, f"动作 {action} 按钮贴图未加载"
+            w, h = surface.get_size()
+            assert abs(w / h - 2.0) < 0.05, f"按钮贴图比例 {w}x{h} 不是 2:1"
+
+    def test_avatar_textures_present(self):
+        from ui.render import Renderer
+        from ui.theme import AVATAR_LIBRARY, avatar_image_path
+
+        renderer = Renderer()
+        for who in ("human", "ai"):
+            path = avatar_image_path(who)
+            assert path is not None and path.exists(), f"{who} 头像贴图缺失"
+            assert renderer.avatar_surface(who) is not None
+        assert set(AVATAR_LIBRARY) == {"fire_spirit", "ice_spirit", "water_spirit", "cat_spirit"}
+
+    def test_avatar_variant_is_honoured(self):
+        from ui.render import Renderer
+        from ui.theme import avatar_image_path
+
+        assert avatar_image_path("human", "cat_spirit").name == "喵喵.png"
+        assert avatar_image_path("human", "nonexistent").name == avatar_image_path("human").name
+        Renderer(avatars={"human": "water_spirit", "ai": "cat_spirit"})
+
+    def test_coin_texture_present_and_used(self):
+        from ui.render import Renderer
+        from ui.theme import coin_image_path
+
+        assert coin_image_path().exists()
+        renderer = Renderer()
+        assert renderer.coin is not None
+        assert renderer.coin.get_size() == (renderer.layout.coin_size, renderer.layout.coin_size)
+
+    def test_missing_textures_fall_back_without_crash(self, monkeypatch, tmp_path):
+        """贴图缺失时必须回退为文本绘制，且不影响绘制流程。"""
+        import const
+        import ui.theme as theme
+
+        monkeypatch.setattr(const, "button_directory", tmp_path / "no_buttons")
+        monkeypatch.setattr(const, "character_directory", tmp_path / "no_chars")
+        monkeypatch.setattr(const, "item_pic_directory", tmp_path / "no_items")
+        monkeypatch.setattr(theme, "BUTTON_IMAGES", dict.fromkeys(range(6), "missing.png"))
+        monkeypatch.setattr(theme, "AVATAR_IMAGES", {"human": "missing.png", "ai": "missing.png"})
+
+        import pygame
+
+        from ui.render import Renderer
+
+        renderer = Renderer()
+        assert renderer.button_surface(0) is None
+        assert renderer.avatar_surface("human") is None
+        surface = pygame.Surface((const.GAME_WIDTH_SIZE, const.GAME_HEIGHT_SIZE))
+        app = make_app(seed=3, renderer=renderer)
+        renderer.draw(surface, app.controller.view())  # 不应抛异常
+
+    def test_no_layout_overlap(self):
+        """手牌、信息栏、按钮三者不得互相遮挡。"""
+        import const
+        from ui.theme import Layout
+
+        layout = Layout()
+        hand_bottom = layout.own_hand_origin[1] + const.CARD_SIZE[1]
+        assert hand_bottom <= layout.button_y, "手牌压到按钮区"
+        assert layout.own_info_pos[0] + 180 <= layout.own_hand_origin[0], "信息栏侵入手牌区"
+        opponent_bottom = layout.opponent_hand_origin[1] + const.CARD_SIZE_SMALL[1]
+        assert opponent_bottom < layout.pot_pos[1] - 64, "对手暗牌压到底池"
+        assert layout.button_y + layout.button_height <= const.GAME_HEIGHT_SIZE
+
+    def test_window_keeps_background_aspect(self):
+        import const
+
+        assert abs(const.GAME_WIDTH_SIZE / const.GAME_HEIGHT_SIZE - 4 / 3) < 1e-6
+
+    def test_no_missing_assets_in_repo(self):
+        from ui.theme import missing_assets
+
+        assert missing_assets() == []

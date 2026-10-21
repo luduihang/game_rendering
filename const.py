@@ -34,10 +34,11 @@ FONT_MAIN = font_directory / "ShangShouHanShuTi.ttf"
 FONT_UI = font_directory / "HeiTi.ttf"
 
 # ---- 窗口与卡牌尺寸 ----
+# 背景原图为 1200x900（4:3），窗口保持同比例以免拉伸失真
 GAME_WIDTH_SIZE = 1000
-GAME_HEIGHT_SIZE = 700
+GAME_HEIGHT_SIZE = 750
 BACKGROUND_W = 1000
-BACKGROUND_H = 700
+BACKGROUND_H = 750
 
 CARD_SIZE = (120, 172)          # 自己手牌
 CARD_SIZE_SMALL = (80, 115)     # 对手暗牌 / 结算展示
