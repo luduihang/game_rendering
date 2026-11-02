@@ -61,6 +61,14 @@ class CardGameEnv:
     - ``opponent_replay_every``：DQN 对手的行动回放频率。``1`` = 每次行动后 replay；
       ``k`` = 每 k 次行动 replay 一次（自博弈中给对手降频，避免双方探索同步塌缩）；
       ``None`` = 对手为冻结策略，不做任何 observe/replay（评估快照对手用）。
+    - ``strength_shaping``：DQN 对手模式下的稠密奖励塑形系数（默认 0 = 关闭）。
+      零和「押注者按牌力得奖、被动跟注者按牌力付费」：某玩家押注时，
+      得 ``+k·(p-0.5)·押注额``（p 为其手牌击败随机手牌概率，p>0.5 才为正）；
+      对方被动跟注时付 ``k·(1-p_对方-0.5)·押注额``（近似零和，因 p_agent ≈ 1-p_opp）。
+      押注的期望奖励为 ``k·(p-0.5)·押注额``：强牌为正、弱牌为负，
+      给「弱牌弃牌、强牌加注」一个稠密梯度信号；按押注额（而非底池）计酬，
+      避免大底池下 Q(加注) 自增强成死循环；StepResult 口径严格零和
+      （agent_reward + opponent_reward == 0）。
     """
 
     def __init__(
@@ -70,8 +78,10 @@ class CardGameEnv:
         agent_player: int = 0,
         swap_seats: bool | None = None,
         opponent_replay_every: int | None = 1,
+        strength_shaping: float = 0.0,
     ):
         self.seed = seed
+        self.strength_shaping = float(strength_shaping)
         self.rng = random.Random(seed)
         self._base_agent_player = agent_player
         self.agent_player = agent_player
@@ -88,6 +98,7 @@ class CardGameEnv:
         # 对手行动时记录 (对手视角观测, 动作)，在下一对手行动前或对局结束时
         # 补齐 (reward, next_state, done) 再交给 opponent.observe()。
         self._opp_pending: tuple[np.ndarray, int] | None = None
+        self._opp_shaping = 0.0
         self._opp_actions = 0
 
     @property
@@ -114,6 +125,7 @@ class CardGameEnv:
         self.room = GameRoom.new(hands)
         self.steps = 0
         self._opp_pending = None
+        self._opp_shaping = 0.0
         self._opp_actions = 0
 
         self.opponent.reset()
@@ -136,6 +148,12 @@ class CardGameEnv:
         assert room is not None, "必须先 reset()"
 
         actor = room.whose_turn
+        # 塑形所需的前置状态必须在 room.apply 之前抓取（行动会改变押注/底池）
+        k = self.strength_shaping if self.is_dqn_opponent else 0.0
+        if k != 0.0:
+            agent_strength = float(self.encoder._strength(room.own_hand(self.agent_player)))
+            opp_strength = float(self.encoder._strength(room.own_hand(self.opponent_seat)))
+            opp_bet_before = float(room.players[self.opponent_seat].bet)
         try:
             room.apply(action)
         except IllegalAction as exc:  # 训练循环不应再对已结束房间行动（D4）
@@ -145,6 +163,14 @@ class CardGameEnv:
             self._notify_opponent(actor, action)
 
         agent_reward, opp_reward = 0.0, 0.0
+        net_shaping = 0.0
+        if k != 0.0 and int(action) < 4:
+            # 本方押注：得 k·(p-0.5)·押注额（有界）；对手同步记跟注成本 k·(0.5-p_opp)·押注额。
+            # p>0.5 时押注期望为正、p<0.5 时为负 → 弱牌弃牌/强牌加注的梯度；
+            # 用押注额（而非底池）计酬，避免大底池下 Q(加注) 自增强成死循环。
+            bet_amount = float(BET_OPTIONS[int(action)])
+            net_shaping += k * (agent_strength - 0.5) * bet_amount
+            self._opp_shaping -= k * (0.5 - opp_strength) * bet_amount
         done = room.finish
         if done:
             agent_reward, opp_reward = self._settle_rewards()
@@ -153,12 +179,24 @@ class CardGameEnv:
             done = room.finish
             if done:
                 agent_reward, opp_reward = self._settle_rewards()
+        if k != 0.0 and not done:
+            # 对方押注、本方被动跟注：本方付 k·(0.5-p)·对方押注额（对手得等值）
+            opp_amount = float(room.players[self.opponent_seat].bet) - opp_bet_before
+            if opp_amount > 0:
+                net_shaping -= k * (0.5 - agent_strength) * opp_amount
+        if net_shaping != 0.0:
+            agent_reward += net_shaping
+            opp_reward -= net_shaping
         if self.steps >= MAX_STEPS and not done:
             done = True
 
         if self.is_dqn_opponent:
-            # 对手上一条待结算经验：对局结束时拿到终局对手奖励，否则奖励为 0
-            self._finalize_opponent_transition(done=done, opp_reward=opp_reward)
+            # 对手上一条待结算经验：对局结束时拿到终局对手奖励，否则奖励为 0；
+            # 若该条经验是押注，还带上对应的零和塑形增量
+            self._finalize_opponent_transition(
+                done=done, opp_reward=opp_reward, pending_shaping=self._opp_shaping
+            )
+            self._opp_shaping = 0.0
 
         return StepResult(
             observation=self._observation(),
@@ -214,20 +252,36 @@ class CardGameEnv:
 
         对手只从「自己行动」的 transition 学习（reward 用对手视角的零和奖励）；
         对局若在本步行动后结束，终局奖励在调用方（step/reset 后的结算处）补齐。
+        对手行动必为押注：得 ``+k·(p-0.5)·押注额``（p>0.5 才为正）。
         """
-        self._finalize_opponent_transition(done=False, opp_reward=0.0)
+        self._finalize_opponent_transition(
+            done=False, opp_reward=0.0, pending_shaping=self._opp_shaping
+        )
         obs = self._opponent_observation()
         action = self.opponent.act(obs, room.legal_actions())
+        opp_shaping = 0.0
+        if self.strength_shaping != 0.0 and int(action) < 4:
+            # 对手行动必为押注（轮到对手时其押注必然抬高）：
+            # 押注者得 k·(p-0.5)·押注额（p>0.5 才为正）
+            opp_strength = float(self.encoder._strength(room.own_hand(self.opponent_seat)))
+            opp_shaping = self.strength_shaping * (opp_strength - 0.5) * float(BET_OPTIONS[int(action)])
         room.apply(action)
         self.opponent_action_counts[int(action)] += 1
+        self._opp_shaping = opp_shaping
         if self.opponent_replay_every is not None:
             self._opp_pending = (obs, action)
             self._opp_actions += 1
             if self._opp_actions % self.opponent_replay_every == 0:
                 self.opponent.replay()
 
-    def _finalize_opponent_transition(self, done: bool, opp_reward: float) -> None:
-        """把对手上一条待结算经验变成 Transition 喂给 opponent.observe()。"""
+    def _finalize_opponent_transition(
+        self, done: bool, opp_reward: float, pending_shaping: float = 0.0
+    ) -> None:
+        """把对手上一条待结算经验变成 Transition 喂给 opponent.observe()。
+
+        ``pending_shaping`` 是本条经验对应动作的零和塑形增量（对手押注为正），
+        与主策略侧的塑形口径对称。
+        """
         if self._opp_pending is None:
             return
         state, action = self._opp_pending
@@ -236,7 +290,7 @@ class CardGameEnv:
             Transition(
                 state=np.asarray(state, dtype=np.float32),
                 action=int(action),
-                reward=float(opp_reward) if done else 0.0,
+                reward=(float(opp_reward) if done else 0.0) + pending_shaping,
                 next_state=np.asarray(self._opponent_observation(), dtype=np.float32),
                 done=bool(done),
             )

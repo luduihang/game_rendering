@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from agents.dqn import DQNAgent
+from agents.dqn import DQNAgent, DQNConfig
 from scripts.env import ACTION_NAMES, CardGameEnv
 
 REPO = Path(__file__).resolve().parents[1]
@@ -30,6 +30,20 @@ DEFAULT_OUT = REPO / "run"
 def _action_distribution(counts: Counter[int]) -> dict[str, float]:
     total = sum(counts.values()) or 1
     return {ACTION_NAMES.get(k, str(k)): round(v / total, 4) for k, v in sorted(counts.items())}
+
+
+def _hidden_of(path) -> tuple[int, int] | None:
+    """从 checkpoint 推断隐藏层宽度（fc2.weight），加载非默认结构时避免维度不匹配。"""
+    import torch
+
+    state = torch.load(str(path), map_location="cpu", weights_only=True)
+    if "fc1.weight" not in state or "fc3.weight" not in state:
+        return None
+    hidden = state["fc1.weight"].shape[0]
+    hidden2 = state["fc3.weight"].shape[1]
+    if int(hidden) == 128 and int(hidden2) == 64:
+        return None  # 默认结构，无需覆盖
+    return (int(hidden), int(hidden2))
 
 
 def evaluate(
@@ -47,19 +61,26 @@ def evaluate(
     - ``opponent_checkpoint`` 非空：对手为加载自该 checkpoint 的冻结 DQN（自博弈对战模式，
       每轮交换座位以消除先手偏置；summary 增加 ``opponent_win_rate`` 与对手动作分布）。
     """
-    agent = DQNAgent.from_checkpoint(checkpoint, seed=seed, epsilon=epsilon)
+    hidden = _hidden_of(checkpoint)
+    agent = DQNAgent.from_checkpoint(
+        checkpoint, seed=seed, epsilon=epsilon,
+        config=DQNConfig(hidden=hidden) if hidden is not None else None,
+    )
     opponent: DQNAgent | None = None
     if opponent_checkpoint is None:
         env = CardGameEnv(seed=seed)
     else:
+        opp_hidden = _hidden_of(opponent_checkpoint)
         opponent = DQNAgent.from_checkpoint(
-            opponent_checkpoint, seed=seed + 1, epsilon=0.0
+            opponent_checkpoint, seed=seed + 1, epsilon=0.0,
+            config=DQNConfig(hidden=opp_hidden) if opp_hidden is not None else None,
         )
         # 对手为冻结策略（不学习）；DQN 对手下 env 自动启用每轮座位交换
         env = CardGameEnv(seed=seed, opponent=opponent, opponent_replay_every=None)
 
     wins = 0
     opp_wins = 0
+    natural_end = 0
     rewards: list[float] = []
     action_counter: Counter[int] = Counter()
     pots: list[int] = []
@@ -84,6 +105,8 @@ def evaluate(
         elif episode_reward < 0:
             opp_wins += 1
         pots.append(env.room.all_bet)
+        if env.room.finish:
+            natural_end += 1
 
     summary = {
         "rounds": rounds,
@@ -95,6 +118,7 @@ def evaluate(
         "opponent_win_rate": opp_wins / rounds,
         "avg_reward": float(np.mean(rewards)),
         "avg_pot": float(np.mean(pots)),
+        "natural_end_rate": natural_end / rounds,
         "action_distribution": _action_distribution(action_counter),
         "opponent_action_distribution": _action_distribution(env.opponent_action_counts),
     }
