@@ -121,7 +121,7 @@
 
 ## architecture-knowledge-base：续做 game_rendering 架构知识库（首次委派因 reader timeoutMs=900000 超时全部失败，但范围 A/B 的报告已从会话留存中回收，证据完整可用）。本轮：派发 2 个 reader 分别补齐「ui/ 表现层」与「tests/+CI/pyproject 质量守护」两块缺口（切分更小、超时已提高到 2700000ms）；随后派发 1 个 worker 把 A/B/C1/C2 四份报告汇总成 docs/ARCHITECTURE.md（8 章节）；最后派发 1 个 reviewer 逐条核对证据与冲突。Main Agent 只做调度与编排，不亲自读代码、不亲自写文档正文。
 
-- 状态：已批准；未验收
+- 状态：已验收；已验收
 - 预算：1800000 tokens；授权路径 .
 
 - Delegation G-a88f315c-6c68-4198-8275-09b455c7dc4e：reader
@@ -240,7 +240,7 @@
 ## 结论与建议
 ## UNKNOWN 清单
     - 授权：工具 read, grep, find, ls；路径 ./ui；额度 30000 tokens
-        - Run R-6277d607-f2cc-4fb1-990f-b740b4fb6c2d：RUNNING；reader；模型 vllm-local/Qwen3.8-27B；用量未知
+        - Run R-6277d607-f2cc-4fb1-990f-b740b4fb6c2d：SUCCEEDED；reader；模型 vllm-local/Qwen3.8-27B；363778 tokens
 - Delegation G-14dbf053-c4e8-47cb-be02-f33b67a543d3：reader
     - 目标：【调查范围 C2b：README 一致性核对 + 构建配置 + 资源规模】只读调查 game_rendering 的三件事，产出精简报告供 Main Agent 汇总进 docs/ARCHITECTURE.md。
 
@@ -279,4 +279,192 @@ F. tests/baseline/ 里剩余的 repro_d7_timing.py 复现的是哪个历史缺�
 ## 结论与建议
 ## UNKNOWN 清单
     - 授权：工具 read, grep, find, ls；路径 ./README.md, ./pyproject.toml, ./src, ./mymath；额度 30000 tokens
-        - Run R-e756980e-4a01-45c5-bd73-01681cdce55a：RUNNING；reader；模型 vllm-local/Qwen3.8-27B；用量未知
+        - Run R-e756980e-4a01-45c5-bd73-01681cdce55a：SUCCEEDED；reader；模型 vllm-local/Qwen3.8-27B；392507 tokens
+- Delegation G-e00d0375-4b2b-4dd6-8d1d-a92aecc9fd4c：worker
+    - 目标：把 5 份只读调查报告汇总成仓库的架构知识库文档 docs/ARCHITECTURE.md。
+
+**你的工作目录（worktree）**：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base
+所有读写都在这个 worktree 里进行。不要去改主工作树。
+
+**输入材料**（都在 worktree 的 management/evidence/ 下，全部已提交，可直接读）：
+- report-A-domain-core.md —— core/ 领域层 + algorithm.py + const.py（233 处 file:line）
+- report-B-agents-scripts.md —— agents/ + scripts/ + draw_me_vs_DQN_Plus.py（31 处 file:line）
+- report-C1-ui.md —— ui/ 表现层（51 处 file:line）
+- report-C2-tests-quality.md —— tests/ 全量「被测试锁定的行为清单」（这是最重要的一份，完整保留）
+- report-C2b-readme-consistency.md —— README 逐条一致性核对、pyproject、CI、src 资源规模
+- report-C-partial-ui-tests.md —— 早期被截断的 ui 报告，仅作参考，不要优先采信
+
+**你要产出的唯一文件**：docs/ARCHITECTURE.md（新建）
+
+**硬约束**：
+1. 只允许新建 docs/ARCHITECTURE.md 这一个文件。**禁止修改任何其它文件**（包括 management/、README.md、代码、tests/）。不要改 README 的错——把不一致写进文档的「发现的问题」一节即可。
+2. 所有事实性结论必须带 `文件路径:行号` 证据，直接取自上述报告，不要自己重新推导、不要编造行号。
+3. 报告说 UNKNOWN 的地方，文档里就写 UNKNOWN，不要用 README 的自述补齐。
+4. 不得引入报告中没有的新结论。
+
+**文档结构（严格按这 8 节，标题用下面给的中文）**：
+1. `## 1. 概览` —— 项目是什么、生成时的 commit（用 `git rev-parse HEAD`）、证据来源清单（5 份报告各自覆盖什么）、如何使用本文档
+2. `## 2. 分层结构与依赖方向` —— 四层职责 + 严格单向依赖图（用 ASCII 文字图）+ 「不得依赖」清单（core/ 不 import pygame/numpy/scipy/torch；agents/ scripts/ 不 import pygame）+ README 架构图箭头方向有误的提示
+3. `## 3. 模块职责表` —— 逐模块表格：路径 | 行数 | 职责 | 关键公开符号 | file:line
+4. `## 4. 关键调用链` —— 交互入口 → ui/app → core.GameRoom → agents 的完整链路，以及训练链路 scripts/train.py → scripts/env.py → core/agents。每条链给出 file:line
+5. `## 5. 数据流与状态管理` —— 权威状态在哪（core.GameRoom.snapshot()）、UI 如何只读消费、状态机推进方式、AI 回合与人类回合的 deadline 表达
+6. `## 6. 被测试锁定的行为清单` —— 以表格逐条列出：测试文件 | 守护的约束 | file:line。这是文档最重要的一节，必须完整覆盖 report-C2-tests-quality.md 的全部条目
+7. `## 7. 重构风险点` —— 改哪里会牵连什么，每条带 file:line 证据。必须包含：核心状态契约（GameRoom.snapshot 与 UI view 的逐字段相等）、D1-D9 历史缺陷已被哪些测试钉住、精确强度表的建表时机、权重维度自适应、D6 默认均匀发牌与 draw_strength_biased() 开关、README 与代码的 2 处不一致
+8. `## 8. 遗留疑点与未核实项` —— 汇总所有报告的 UNKNOWN，另加一节 `### README 与代码的不一致` 列出已知 2 处（"6 行"实为 14 行；架构图箭头方向与文字相反），以及 mymath/robot2.py 已迁入 agents/robot.py 的历史说明
+
+**完成后**：
+- 用 `git add docs/ARCHITECTURE.md && git commit -m "docs: 新增架构知识库 docs/ARCHITECTURE.md"` 提交。
+- 最终回复给出：文件路径、总行数、8 个章节各自的行数、file:line 证据条数、你实际写入的 git commit hash、以及你为遵守「只改一个文件」所做的确认（贴 git status 输出）。
+
+**注意输出长度**：文档本身可以长（写进文件，不受输出限制），但你的**最终回复**控制在 800 字以内。若单次写不完，分多次 edit 追加，但每段都要写进文件。
+    - 授权：工具 read, grep, find, ls, edit, write, bash；路径 ./docs, ./management/evidence；额度 120000 tokens
+        - Run R-d54bff1a-f47b-4a96-834c-e80648fe70c1：SUCCEEDED；worker；模型 vllm-local/Qwen3.8-27B；1022624 tokens
+- Delegation G-41ba4180-9ac2-4944-815a-36187cf228ab：reviewer
+    - 目标：独立审核 docs/ARCHITECTURE.md 的证据准确性与完整性。你是审核者，不修改任何文件。
+
+**待审文件**：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base/docs/ARCHITECTURE.md（422 行，8 个章节，412 处 file:line 引用）
+
+**参考材料**（原始调查报告，用来核对文档有没有曲解原意）：
+- /home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base/management/evidence/report-A-domain-core.md
+- .../management/evidence/report-B-agents-scripts.md
+- .../management/evidence/report-C1-ui.md
+- .../management/evidence/report-C2-tests-quality.md
+- .../management/evidence/report-C2b-readme-consistency.md
+
+**你要做的四件事**：
+
+1. **抽样核验行号真实性（最重要）**：从文档中随机抽 **20 条** file:line 引用（尽量覆盖 6 个章节、不同文件）。对每一条，用 read/grep 打开被引用的文件对应行号，核对那一行的代码内容是否真的支持文档给出的结论。
+   - 输出表格：文档位置 | 引用 | 该行实际内容 | 命中(✓)/不命中(✗)/无法确认
+   - 命中率必须 ≥ 90%（即 ≤ 2 条不命中）
+   - 若发现行号错位（内容对但行号偏了 N 行），单独列出并给出正确行号
+
+2. **与 tests/ 实际断言比对**：文档第 6 节声称的「被测试锁定的行为清单」共 158 行。抽查 **10 个测试文件**里的断言，确认文档描述的守护内容与测试里真实的 assert 一致（不是复述测试文件名的想当然）。重点检查 tests/test_purity.py、tests/test_agents.py、tests/test_ui.py、tests/test_scripts.py、tests/test_rules.py。
+
+3. **与 README/代码冲突排查**：文档第 8 节列出了 README 的 2 处不一致（「6 行」实为 14 行、架构图箭头方向与文字相反）。请独立复核这两处是否成立（给 README 行号 + 代码/文件证据），并检查文档里**自己**是否又引入了与代码矛盾的陈述。
+
+4. **UNKNOWN 完整性**：文档标了 17 处 UNKNOWN。确认这些确实是报告里无法确认的项，而不是该确认却偷懒标记；并确认文档**没有**用 README 的自述去补齐报告里标 UNKNOWN 的事实。
+
+**严格约束**：
+- 只读。你只有 read/grep/find/ls 工具，**禁止写任何文件**（包括不要去修 README 或文档）。
+- 不修改 docs/ARCHITECTURE.md。你的职责是报告问题，不是修问题。
+- 每条结论必须给 `文件路径:行号` 证据。
+- 不要重复报告原文已知的截断问题（A/B/C2 报告尾部截断已被 worker 标注）。
+
+**输出格式**（严格照此）：
+## 核验结论（通过 / 有条件通过 / 不通过）+ 一句话理由
+## 抽样行号核验表（20 条）
+## 行号错位清单
+## tests/ 断言比对结果（10 个文件）
+## README/代码冲突复核
+## UNKNOWN 完整性评估
+## 发现的具体问题（按严重度排序：阻断 / 需修正 / 建议）
+## 总体结论（通过 / 不通过 / 证据不足）
+
+最终回复控制在 1200 字以内，但核验表格可以紧凑呈现。
+    - 授权：工具 read, grep, find, ls；路径 ./docs, ./tests, ./management/evidence, ./README.md；额度 60000 tokens
+        - Run R-7d6a65d2-d66a-43cc-bfee-67c85cd0416a：FAILED；reviewer；模型 vllm-local/Qwen3.8-27B；739599 tokens
+- Delegation G-db4c5db9-c402-4879-b6da-cf1ed85bc1b6：reviewer
+    - 目标：审核任务 R1：抽样核验 docs/ARCHITECTURE.md 中 file:line 引用是否指向真实且支持结论的代码行。你是审核者，只读，禁止写任何文件。
+
+**待审文件**：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base/docs/ARCHITECTURE.md（422 行）
+
+**只做一件事**：从该文档中抽 **20 条** file:line 引用（尽量覆盖 8 个章节、不同文件），逐条用 read 或 grep 打开被引用的文件对应行号，核对那一行的实际内容是否支持文档给出的结论。
+
+**效率要求（重要）**：用 grep -n 一次定位多处，不要逐个 read 整个大文件。最多 25 次工具调用就要给出结论。请先全部核验完成，再一次性输出最终报告（不要边核验边输出）。
+
+**判定口径**：
+- 命中 ✓：该行代码内容确实支持文档结论
+- 行号错位 ±N：内容正确但行号偏了 N 行 → 单独列出并给出正确行号
+- 不命中 ✗：该行内容与文档结论无关或矛盾
+- 无法确认：该文件不可读/该行不存在
+
+**输出格式**（严格照此，不要加前言）：
+## 核验结论（通过 / 有条件通过 / 不通过）+ 一句话理由
+## 抽样核验表
+| # | 文档位置 | 引用 | 该行实际内容摘要 | 判定 |
+（20 行，紧凑写，每行 ≤ 60 字）
+## 行号错位清单
+## 不命中清单
+## 总体结论（通过 / 不通过 / 证据不足）
+
+最终回复控制在 900 字以内。
+    - 授权：工具 read, grep, find, ls；路径 ./docs；额度 60000 tokens
+        - Run R-c0feb4e1-6de9-4e0f-8add-196900d2a697：SUCCEEDED；reviewer；模型 vllm-local/Qwen3.8-27B；131240 tokens
+- Delegation G-bc2f0aa1-1c9c-4f7c-bef7-e6e85e131de0：reviewer
+    - 目标：审核任务 R2：核对 docs/ARCHITECTURE.md 第 6 节「被测试锁定的行为清单」与 tests/ 真实断言是否一致，并复核文档自述的 README 不一致项。你是审核者，只读，禁止写任何文件。
+
+**待审文件**：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base/docs/ARCHITECTURE.md 第 6 节（约 166-323 行）与第 8 节（约 386-422 行）
+**被审对象**：同 worktree 下的 tests/ 目录与 README.md
+
+**要做两件事**：
+
+1. **tests/ 断言比对（重点）**：文档第 6 节有 158 行声称的「被测试锁定的行为清单」。抽 **8 个测试文件**，逐个核对文档描述与测试里真实的 assert 是否一致：
+   - tests/test_purity.py —— 「core/ 不 import pygame/numpy/scipy/torch」的守护形式
+   - tests/test_agents.py —— D8 维度自适应、D9 真正加载权重的断言
+   - tests/test_ui.py —— 零 sleep、QUIT 响应、view 与 snapshot 相等、性能上限
+   - tests/test_scripts.py —— 同种子可复现性断言
+   - tests/test_rules.py —— D1/D2/D4 断言
+   - tests/test_dealing.py —— D6 均匀发牌断言
+   - tests/test_strength.py —— 22100 精确表断言
+   - tests/test_evaluator.py —— 六类牌型断言
+   对每个文件给出：文档声称守护了什么 | 真实 assert 在哪一行 | 一致(✓)/描述有偏差(△)/矛盾(✗) | 若为 △ 或 ✗ 给出真实断言内容摘要。
+   并说明：文档第 6 节相对测试里的 assert 是否有整类遗漏。
+
+2. **README 不一致复核**：文档第 8 节声称 README 有 2 处不一致：
+   - (a) README 说入口文件「6 行」，实际是 14 行
+   - (b) README 架构图的箭头方向（core/agents → scripts）与文字和代码实际方向相反
+   请独立验证这两条是否成立，给出 README.md 行号 + 代码侧证据行号。并顺带抽 5 条文档中的技术陈述核对是否与代码矛盾。
+
+**效率要求（重要）**：用 grep -n 批量定位，不要逐个 read 大文件。最多 30 次工具调用给出结论。先全部核验完成再一次性输出最终报告。
+
+**严格约束**：只读，禁止写任何文件（包括不要去修 README 或文档）。每条结论给 `文件路径:行号` 证据。
+
+**输出格式**（严格照此，不要加前言）：
+## 核验结论（通过 / 有条件通过 / 不通过）+ 一句话理由
+## tests/ 断言比对
+| 测试文件 | 文档声称 | 真实 assert 行号 | 判定 | 偏差摘要 |
+（8 行）
+## 第 6 节遗漏项检查
+## README 不一致复核（a）(b) 两条各给双方行号）
+## 文档自身陈述抽查（5 条）
+## 发现的具体问题（按 阻断 / 需修正 / 建议 分级）
+## 总体结论（通过 / 不通过 / 证据不足）
+
+最终回复控制在 1100 字以内。
+    - 授权：工具 read, grep, find, ls；路径 ./docs, ./tests, ./README.md；额度 60000 tokens
+        - Run R-31dae8ab-8645-4f6d-a1da-7c179c9222aa：SUCCEEDED；reviewer；模型 vllm-local/Qwen3.8-27B；220910 tokens
+- Delegation G-3d3d0aa0-483c-4b50-ac1e-69553fe8d506：worker
+    - 目标：按两份审核报告的结论，修正 docs/ARCHITECTURE.md 的 1 处措辞问题、补充 1 条新发现、并校准若干行号边界。
+
+**你的工作目录（worktree）**：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base
+所有读写都在这个 worktree 内进行。
+
+**唯一允许修改的文件**：docs/ARCHITECTURE.md。禁止修改任何其它文件。
+
+**审核报告**（worktree 内 management/evidence/）：
+- review-R1-line-sampling.md —— 抽样 20 条行号核验，结论：通过（19 精确命中 + 1 范围偏 1 行，命中率 95%）
+- review-R2-tests-readme.md —— tests 断言比对，结论：有条件通过（1 需修正 + 3 建议）
+
+**要做的三件事**：
+
+1. **需修正（必做）**：第 6.3 节中「合法动作仅在人类回合非空」措辞偏强。tests/test_ui.py:147-148 只断言了人类回合合法动作非空，**没有**断言 AI 回合为空。改为「人类回合合法动作非空（未断言 AI 回合为空）」这类准确表述，并在该行后补一句注明测试的实际断言范围与 file:line。
+
+2. **建议①（必做，新增一条发现）**：README 关于「ui/、scripts/ 无 time.sleep」的声明存在 overclaim —— 守护它的 tests/test_ui.py:63-65 **只扫 ui/**，并未覆盖 scripts/（scripts/ 无 sleep 目前靠 grep 而非测试守护）。请在第 8 节「README 与代码的不一致」里新增这一条，标明：README 声明范围（README.md:63）与测试实际守护范围（tests/test_ui.py:63-65）不符。
+
+3. **行号边界校准（逐条核对后再改）**：两份报告共指出以下行号边界偏差。**每一条都要先打开对应文件确认正确值再改**，不要盲改；确认后发现原引用其实正确的，保持不动。
+   - pyproject.toml:15-19 → 报告称应为 14-18
+   - rules.py:160-170 → 报告称应为 161-170
+   - rules.py:162（费用行）→ 报告称应为 163
+   - tests/test_purity.py:15-16 → 14-15；:19-25 → 18-24；:28-52 → 起于 26
+   - core/__init__.py:16-30（__all__）→ 16-31
+   - tests/test_agents.py:100-105 → 100-106
+   - tests/test_dealing.py:69-74 → 69-75
+   在第 8 节末尾或第 7 节末尾新增一小段「行号校准说明」，记录这些偏差已修正，并说明校准方式（reviewer 抽样核验）。不要为了改而改——内容正确但行号偏 1 行的，若确认后能定位到更准确的行号就改。
+
+**完成后**：
+- `git add docs/ARCHITECTURE.md && git commit -m "docs: 按审核结论修正 ARCHITECTURE.md 的措辞与行号边界"` 提交
+- 最终回复给出：修改了哪几处（逐条：位置 | 原内容 | 新内容 | 依据 file:line）、最终文件行数、file:line 引用总数、git commit hash、git status 输出（确认只动了 docs/ARCHITECTURE.md）
+
+**输出长度**：最终回复控制在 700 字以内。文档本体可以长，写进文件不受限。
+    - 授权：工具 read, grep, find, ls, edit, write, bash；路径 ./docs, ./management/evidence；额度 120000 tokens
+        - Run R-3b7f69cb-4da6-43f2-b1ea-2741e27f651f：SUCCEEDED；worker；模型 vllm-local/Qwen3.8-27B；342303 tokens

@@ -59,9 +59,9 @@
         "find",
         "ls"
       ],
-      "maxConcurrent": 1,
+      "maxConcurrent": 2,
       "maxAllocationTokens": 60000,
-      "timeoutMs": 1800000
+      "timeoutMs": 2400000
     }
   }
 }

@@ -2,7 +2,7 @@
 name: worker
 description: 范围明确的实现工作，在独立工作区完成改动与测试
 tools: read, grep, find, ls, edit, write, bash
-thinking: medium
+thinking: minimal
 ---
 
 你是当前项目的实现工人，在 Main Agent 给定范围内完成编码工作。
