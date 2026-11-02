@@ -1,0 +1,216 @@
+{
+  "projectId": "0c68bf5a-2104-498a-9532-7a2f6f2384f3",
+  "revision": 4,
+  "name": "game_rendering 重构 + 机器对手改为 DQN 对抗 DQN 策略",
+  "goal": "按 docs/ARCHITECTURE.md 第 7 节完成 S/M 级重构与 README 三处不一致修正；实现 DQN 对抗 DQN 自博弈训练，用训练产出的真实权重驱动交互界面的机器对手（保持人类 vs 机器模式），消除当前因权重缺失而静默回退为随机策略的问题。",
+  "inScope": [
+    "core",
+    "agents",
+    "ui",
+    "scripts",
+    "tests",
+    "docs",
+    "draw_me_vs_DQN_Plus.py",
+    "algorithm.py",
+    "const.py",
+    "README.md",
+    "CHANGELOG.md",
+    "pyproject.toml",
+    "run"
+  ],
+  "outOfScope": [
+    "不改核心牌局规则语义：core/rules.py 的比对方向、平局处理、花色决胜一律不动",
+    "不改 core/strength.py 的 22100 精确表惰性建表机制（不挪到 import 期、不去 lru_cache、均匀发牌路径不查强度）",
+    "不改 agents/dqn.py 的 from_checkpoint 维度自适应机制（不恢复调用方声明维度）",
+    "不改 core/dealing.py 的默认均匀发牌（deal_strength_biased 仅作可选开关，不得设为默认）",
+    "不改状态编码的 4 维定义与 6 维动作空间（否则新权重与 UI 不兼容）",
+    "不改 ui/ 的 snapshot/view 五字段契约（money/bets/all_bet/finish/winner），只允许新增 view 键",
+    "不引入新玩法、不做联网对战、不做发布打包、不重写 git 历史",
+    "不删除或重命名任何既有源码文件；历史脚本仍以 management/legacy/ 归档形式保留",
+    "不把 Main Agent 变成实现者：编码、测试、训练、审核全部由子 Agent 完成",
+    "不合并分支到 main（integrateBranch 由人工执行）",
+    "训练局数不得超过 100 轮（超出需人工批准）",
+    "追求策略强度/博弈逻辑（本次明确先不考虑，只要求机器用训练产物而非随机概率）"
+  ],
+  "successCriteria": [
+    "scripts/train.py 支持自博弈模式（--opponent-mode self），两个 DQN 互相对弈，产出主策略与对手策略两个 checkpoint，summary 含双方胜率与动作分布",
+    "自博弈消除先手偏置：两个 DQN 座位逐局交换；双方奖励零和（agent_reward + opponent_reward == 0）",
+    "工作区存在由自博弈训练产出的真实权重；UI 默认加载它时 agent.epsilon == 0.0（不是回退的 0.15），动作分布与随机策略显著不同",
+    "交互界面仍是人类 vs 机器模式：人类按键/鼠标操作、机器自动出牌，可完整走完一局",
+    "scripts/evaluate.py 支持双 checkpoint 对战评估并输出双方胜率",
+    "docs/ARCHITECTURE.md 第 7.7 节的 S 级与 M 级条目全部完成；第 7.6 节 README 三处不一致全部修正",
+    "pytest 与 ruff 全绿，且相对重构前基线没有任何既有测试被打红",
+    "docs/ARCHITECTURE.md 已同步更新：新增自博弈训练章节、机器对手接线变化、权重获取与存放说明",
+    "「不可碰」清单零改动（7.1 状态契约 / 7.3 惰性建表 / 7.4 维度自适应 / 7.5 均匀发牌），由 reviewer 逐条核对 diff"
+  ],
+  "authority": {
+    "paths": [
+      "core",
+      "agents",
+      "ui",
+      "scripts",
+      "tests",
+      "docs",
+      "run",
+      "draw_me_vs_DQN_Plus.py",
+      "algorithm.py",
+      "const.py",
+      "README.md",
+      "CHANGELOG.md",
+      "pyproject.toml"
+    ],
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write",
+      "grep",
+      "find",
+      "ls"
+    ],
+    "readRepository": true,
+    "writeWorkspace": true,
+    "commitBranch": true,
+    "integrateBranch": false
+  },
+  "delegationPolicy": {
+    "allowInternalTasks": true,
+    "maxDepth": 1,
+    "maxConcurrent": 3
+  },
+  "resourceLimits": {
+    "budgetTokens": 60000000
+  },
+  "humanApprovalTriggers": [
+    "触碰「不可碰」清单：core/rules.py 的规则语义、core/strength.py 的建表时机、agents/dqn.py 的 from_checkpoint 机制、core/dealing.py 的默认发牌、ui/ 的 snapshot/view 五字段契约",
+    "任何改变状态编码维度（4 维输入 / 6 维动作）或多出/少出动作的改动",
+    "删除、重命名或移动任何既有源码文件",
+    "新增、升级或移除任何第三方依赖",
+    "训练局数超过 100 轮，或需要完整重训/超长训练",
+    "把机器对手从 DQN 换成非 DQN 策略（Robot、规则、随机）",
+    "改变自博弈的对称性口径（座位交换、零和奖励）",
+    "把 .pth 权重文件纳入版本库，或改变 .gitignore 对权重的处理",
+    "提高委派深度（当前固定 1 层）或把 maxConcurrent 提到 3 以上",
+    "任何 git 合并到 main（integrateBranch 需人工执行）"
+  ],
+  "approvalPolicy": {
+    "version": 1,
+    "defaultEffect": "ask",
+    "rules": [
+      {
+        "id": "no-integrate",
+        "effect": "deny",
+        "risk": "high",
+        "match": {
+          "integrateBranch": true
+        }
+      },
+      {
+        "id": "no-credential-paths",
+        "effect": "deny",
+        "risk": "high",
+        "match": {
+          "pathsAny": [
+            ".env",
+            ".ssh",
+            ".aws",
+            ".gnupg",
+            ".npmrc",
+            "secrets",
+            "credentials"
+          ]
+        }
+      },
+      {
+        "id": "no-repo-internals",
+        "effect": "deny",
+        "risk": "high",
+        "match": {
+          "pathsAny": [
+            ".git",
+            ".pi",
+            ".github"
+          ]
+        }
+      },
+      {
+        "id": "no-deep-delegation",
+        "effect": "deny",
+        "risk": "medium",
+        "match": {
+          "maxDepthMin": 2
+        }
+      },
+      {
+        "id": "no-unbounded-budget",
+        "effect": "deny",
+        "risk": "medium",
+        "match": {
+          "minBudgetTokens": 2000000
+        }
+      },
+      {
+        "id": "read-only-survey-auto",
+        "effect": "auto",
+        "risk": "low",
+        "match": {
+          "taskKind": "internal",
+          "pathsAny": [
+            "core",
+            "agents",
+            "ui",
+            "scripts",
+            "tests",
+            "docs",
+            "README.md",
+            "CHANGELOG.md",
+            "pyproject.toml"
+          ],
+          "toolsAll": [
+            "read",
+            "grep",
+            "find",
+            "ls"
+          ],
+          "writeWorkspace": false,
+          "commitBranch": false,
+          "maxBudgetTokens": 50000
+        }
+      },
+      {
+        "id": "implement-in-scope-auto",
+        "effect": "auto",
+        "risk": "low",
+        "match": {
+          "taskKind": "internal",
+          "pathsAny": [
+            "core",
+            "agents",
+            "ui",
+            "scripts",
+            "tests",
+            "docs",
+            "README.md",
+            "CHANGELOG.md",
+            "pyproject.toml"
+          ],
+          "toolsAll": [
+            "read",
+            "edit",
+            "write",
+            "bash",
+            "grep",
+            "find",
+            "ls"
+          ],
+          "writeWorkspace": true,
+          "commitBranch": true,
+          "maxBudgetTokens": 1500000
+        }
+      }
+    ]
+  },
+  "prd": "# PRD —— game_rendering 重构 + 机器对手改为 DQN 对抗 DQN 策略\n\n## 背景\n\n`game_rendering`（炸金花三张牌博弈）已完成 core/agents/ui/scripts 四层重构，并有 `docs/ARCHITECTURE.md`\n（439 行，421 处 file:line 证据）作为架构知识库。本次任务按该知识库第 7 节的结论做实际重构，\n并把交互界面的机器对手策略改成 **DQN 对抗 DQN**。\n\n### 已核实的现状（verified，见 management/evidence/investigation/）\n\n1. **仓库内没有任何 `.pth` 权重文件**（`find`/`ls`/git 索引三重复核均为 0）。`ui/app.py:25` 的\n   `DEFAULT_CHECKPOINT = REPO / \"dqn_model_1.pth\"` 指向一个不存在的文件，`ui/app.py:57-62` 捕获\n   `FileNotFoundError` 后**静默回退为未训练策略**（epsilon=0.15 随机）。也就是说，**当前交互界面里的\n   机器根本不是训练过的 DQN，而是随机策略**。同样地 `scripts/evaluate.py:23` 的默认 checkpoint 也不存在。\n2. **状态编码天然支持双 DQN**：`StateEncoder.encode(snapshot, player, own_hand)`（`agents/dqn.py:70-94`）\n   以视角方为参数、无内部状态，产出 4 维输入（`agents/dqn.py:29-32`）；动作空间座位无关、6 个动作\n   （`core/rules.py:99-102`）。UI 侧（`ui/app.py:147-148`）与训练侧（`scripts/env.py:97-100`）\n   用的是同一个编码器与同一维度（调研 E 核对结论：一致）。\n3. **无信息泄漏**：`GameRoom.snapshot()` 不含手牌（`core/rules.py:107-120`），每个智能体只拿到自己\n   的手牌（`scripts/env.py:100`、`ui/app.py:147-148`）。\n4. **唯一的结构性不对称**：玩家 0 恒先手（`core/rules.py:60`，`GameRoom.new` 无先手参数）。双 DQN\n   自博弈下这构成先手优势，必须消除。\n5. **`scripts/env.py` 与 Robot 协议强耦合**：`init_dick`（`scripts/env.py:52`）、带 `hand` 键的\n   dict 快照（`:120-124`）、json `update_dick`（`:126-145`）都是 Robot 专属协议。\n6. **自博弈塌缩风险**：当前 `target_sync_every=1` + 每步一次 replay（`agents/dqn.py:45`，\n   `scripts/train.py:71`），两侧 epsilon 会同步衰减到 0.01（`agents/dqn.py:191-192`），探索同时消失。\n7. **知识库第 7 节判定**：7.1（snapshot/view 契约）、7.3（22100 惰性建表）、7.4（from_checkpoint\n   维度自适应）、7.5（均匀发牌默认）**不可碰**；7.2 的 D1-D9 路径**必须避开**；7.6（README 三处\n   不一致）可安全做。7.7 的 10 个小问题分为 S(约 9 条) / M(3 条) / L(1 条)。\n\n## 目标\n\n按优先级排列（用户 2026-11-01 明确指定）：\n\n1. **【第一优先】CPU 跑 DQN 自博弈训练，产出一个策略文件**（训练局数 ≤ 100 轮）。\n2. **【第二优先】跑通「玩家 vs 机器」的对抗**，且机器用的是**训练出来的逻辑**，而不是当前\n   `ui/app.py:57-62` 的随机概率回退（epsilon=0.15）。\n3. 实现 DQN 对抗 DQN（自博弈）训练机制本身。\n4. 保持**人类对抗机器**的交互模式不变（人仍按键/鼠标操作，机器自动出牌）。\n5. 按 `docs/ARCHITECTURE.md` 第 7 节完成 **S/M 级重构**，修正 7.6 的 README 三处不一致。\n6. 保持「改动不打红现有测试」，且新增测试锁定新行为。\n\n**本轮明确不追求策略强度**：100 轮训练只要求「产出的权重确实被加载、机器行为确实来自训练产物」，\n不要求机器水平高。策略强度留作后续迭代。\n\n## 非目标\n\n- 不改核心牌局规则语义（`core/rules.py` 的比对方向、平局、花色决胜一律不动）。\n- 不改 22100 精确表的惰性建表机制（不挪到 import 期、不去 lru_cache）。\n- 不改 `from_checkpoint` 的维度自适应机制。\n- 不改默认发牌（保持均匀发牌；`deal_strength_biased` 仅作可选开关）。\n- 不改状态编码的 4 维定义与 6 维动作空间（否则新权重与 UI 不兼容）。\n- 不做联网对战、不做新玩法、不做发布打包。\n- 不重写 git 历史。\n\n## 当前状态核实\n\n已核实（verified）：\n\n- 上述 7 条现状均由本次三份调研报告以 file:line 证据确认（`management/evidence/investigation/`）。\n- `docs/ARCHITECTURE.md` 存在且已合并进 main（commit 7109e29）。\n- 基线 r1 为 ACTIVE；本任务需要 r2（r1 的 `outOfScope` 明确禁止改业务代码）。\n\n未核实（unverified，由执行阶段实测）：\n\n- 自博弈训练在 CPU 上的实际墙钟耗时（只有 `tests/test_scripts.py:81-84` 的「5 局 < 60s」上界）。\n- 自博弈训练能收敛到何种程度（胜率曲线、动作分布是否退化）。\n- CI 在干净检出下的真实红绿状态（调研 F 推断 pytest 阶段会因权重缺失而红，未实测）。\n\n## 约束\n\n- **Main Agent 不亲自实现**。Main 只做：拆分任务、派发子 Agent、审阅交付、维护基线与文档。\n  编码、测试、训练、审核全部由子 Agent 完成。\n- 委派深度固定 1 层；子 Agent 模型统一 `vllm-local/Qwen3.8-27B`（qwen38）。\n- **不得触碰**：`core/rules.py` 的规则语义、`core/strength.py` 的建表时机、`agents/dqn.py` 的\n  `from_checkpoint` 机制、`core/dealing.py` 的默认均匀发牌。改动这些会让对应回归测试变红。\n- 训练必须**可复现**（固定种子），且训练局数**最多 100 轮**；超出需人工批准。\n- 本次**先不考虑策略强度与博弈逻辑**，只要求「自博弈训练能产出可用策略文件」+「玩家 vs 机器的对抗能跑通，且机器用的是训练出来的逻辑而非随机概率」。\n- 权重文件不进版本库（`.gitignore` 已忽略 `*.pth`），但需在文档与 CI 中说明其获取方式。\n- 所有新增/修改行为必须有对应测试。\n\n## 可验证验收标准\n\n1. `scripts/train.py` 支持自博弈模式（如 `--opponent-mode self`），两个 DQN 互相对弈；\n   训练产物含主策略与对手策略两个 checkpoint，并写入 summary。\n2. **CPU 上完成一轮 ≤100 局的自博弈训练，实际产出可加载的策略文件**（落在 `run/` 或仓库根，\n   按 `.gitignore` 规则不进版本库）。\n2. 自博弈训练消除了先手偏置：两个 DQN 的座位在每局中交换，且训练 summary 记录双方胜率。\n3. 仓库内**存在**由自博弈训练产出的真实权重文件；`ui/app.py` 默认加载该权重时\n   `epsilon == 0.0`（不是回退的 0.15），且动作分布与随机策略显著不同。\n4. 交互界面仍是「人类 vs 机器」模式：人类按键/鼠标操作，机器自动出牌，回合交替正常。\n5. `scripts/evaluate.py` 能以自博弈权重做双 DQN 对战评估并输出胜率。\n6. 知识库 7.7 的 S 级与 M 级条目全部完成（键码映射、资源自检接入、core `__all__` 补全、\n   `last_now` 归位、`button_rects` 注解等），7.6 的 README 三处不一致全部修正。\n7. `pytest` 与 `ruff` 全绿；**既有测试无一被打红**（对比重构前基线）。\n8. `docs/ARCHITECTURE.md` 同步更新：新增自博弈训练章节、机器对手接线变化、\n   权重获取与存放说明、重构后各章行号与结论的校正。\n9. 本次改动**未触碰**「不可碰」清单中的任何文件机制（由 reviewer 逐条核对）。\n\n## 风险与变更点\n\n| 风险 | 影响 | 应对 |\n|---|---|---|\n| 自博弈塌缩（双方同步衰减探索、互相模仿） | 训练出的权重是废的 | 对手降频学习（每 k 步才 replay）、对手 epsilon 取小常数、周期性用最佳 checkpoint 重置对手、summary 记录双方胜率与动作分布做退化监测 |\n| 先手偏置 | 训练偏向先手方，机器对人类不公平 | 每局交换座位（env 层实现，不改 `core/rules.py`） |\n| 训练耗时超预期 | 任务超期 | 先跑 5 局测速，再定局数；训练局数硬上限 100 轮，超出人工批准 |\n| 100 轮训练出的策略很弱 | 机器打得不好 | 本次明确不追求策略强度（先不考虑逻辑与策略问题），只要求机器用的是训练产物而非随机概率；策略强度留作后续 |\n| 改动打红既有测试（D1-D9 回归） | 破坏已修复的缺陷 | 触碰任何路径前先跑对应测试文件；reviewer 逐条核对「不可碰」清单 |\n| 权重不进版本库 → CI 干净检出必然红 | CI 失效 | 提供权重生成脚本与 CI 步骤；或让相关测试在权重缺失时显式 skip 而非报错（须人工确认口径） |\n| 子 Agent 误改 `core/` 核心机制 | 破坏分层与回归 | core/ 的改动集中在「只补 `__all__` 导出」，由 reviewer 逐行核对 diff |\n",
+  "plan": "# PLAN —— 重构 + DQN 对抗 DQN 策略（基线 r2）\n\n## 角色分工（基线硬约束）\n\n**Main Agent**：只做调度与编排。不亲自读业务代码、不亲自写实现、不亲自跑训练。\n只负责：切分任务、派发子 Agent、审阅交付、维持基线与文档。\n\n**Child Agent**：唯一执行者。实现代码、写测试、跑训练、做审核。\n\n## Task 拆分与依赖\n\n预算上限受组织策略约束（单 Task < 2,000,000 token），项目总预算 **60,000,000**。\n按用户指定的两件要事优先：**先自训练产出策略文件，再跑通玩家 vs 机器对抗**；\n知识库清理重构并行推进，不挡主线。\n\n| Task | 目标 | 依赖 | 预算 | 并行组 |\n|---|---|---|---|---|\n| T1 `selfplay-engine` | `scripts/env.py` + `scripts/train.py` 支持 DQN 对抗 DQN 自博弈 + 测试 | — | 1,800,000 | A |\n| T4 `cleanup-refactor` | 知识库 7.7 的 S/M 级项 + `core/__all__` + README 三处不一致 | — | 1,800,000 | A |\n| T2 `selfplay-train-100` | CPU 跑自博弈训练（≤100 轮），产出策略文件 + 训练报告 | T1 | 1,800,000 | B |\n| T3 `human-vs-machine` | `ui/` 接线：默认加载训练出的策略文件、`epsilon==0.0`、启动校验、玩家 vs 机器对抗跑通 | T2 | 1,800,000 | C |\n| T5 `final-audit` | reviewer 逐条核对验收标准 + 更新 `docs/ARCHITECTURE.md` | T3, T4 | 1,800,000 | — |\n\nA 组并行（T1 ∥ T4，文件不重叠）；主线 T1 → T2 → T3 → T5 顺序推进。`maxConcurrent = 3`。\n\n**worker 运行时限**：`management/policies/subagents.json` 的 worker `timeoutMs` 已从 1800000\n（30 分钟）上调到 **5400000（90 分钟）**，因为 T2 的 100 轮 CPU 训练预计占 20-40 分钟，\n在 30 分钟上限下会超时。\n\n## Phase 0 — 基线与任务（Main）\n1. `governance_project_draft` 记录 r2（PRD + contract + plan），人工 `project approve 2`。\n2. 逐个 `governance_task_create` 建立 T1–T5（internal，auto-approved by baseline-subset）。\n3. 激活当前 Task。\n\n## Phase 1 — T1 自博弈训练引擎（worker，group A）\n**改 `scripts/env.py`**：\n- `opponent` 参数类型 `Robot | None` → `BaseAgent | None`（env.py:34,38）。\n- `reset()` 按对手类型分支：DQN 对手跳过 Robot 专属的 `init_dick`（env.py:52）。\n- 新增 `_opponent_observation()`：以对手座位为视角做 4 维编码（`encoder.encode(snapshot, opp_seat, room.own_hand(opp_seat))`）。\n- `_settle_reward()`（env.py:102-106）扩为返回 `(agent_reward, opponent_reward)` 双值，零和口径对齐。\n- `_advance_opponent_until_agent_turn()`（env.py:108-118）：DQN 对手记录其视角 transition 并调 `observe/replay`；\n  Robot 仍走 `_notify_opponent`（env.py:126-145）。\n- **座位交换**：每局按奇偶交换发牌顺序，消除先手偏置（在 env 层实现，不改 `core/rules.py`）。\n\n**改 `scripts/train.py`**：\n- 增参 `opponent_mode`（`robot|self|snapshot`）、`opponent_ckpt`、`opponent_sync_every`、`opponent_replay_every`。\n- 自博弈模式：对手为在线 DQN，**降频 replay**（默认每 k 步一次）避免探索同步消失。\n- 周期性用主策略快照重置对手（`agent.save(tmp)` + `opponent.load(tmp)`，agents/dqn.py:204-212）。\n- checkpoint 命名：主 `dqn_sp_ep{N}_seed{S}.pth`，对手 `dqn_sp_opp_ep{N}_seed{S}.pth`；summary 增\n  `opponent_mode`、双方胜率、双方动作分布、训练耗时。\n- `main()` 增对应 CLI 参数。\n\n**约束**：`agents/dqn.py` 原则上不改（`act/observe/replay/save/load/from_checkpoint` 已够用）；\n若确需改，只允许加不改既有语义，并说明理由。`core/` 原则上不改。\n\n**测试**：新增 `tests/test_selfplay.py`（或并入 `tests/test_scripts.py`）覆盖：\n- DQN 对手可注入 env 并完成整局；对手视角观测维度为 4 且与 agent 视角编码对称。\n- 座位交换生效（连续两局的先手方不同）。\n- 双方奖励零和（agent_reward + opponent_reward == 0）。\n- 自博弈训练冒烟：少量局数能跑完、产出两个 checkpoint、summary 含新增字段。\n- 同种子两次训练可复现（同 seed → summary 的关键字段一致）。\n\n## Phase 2 — T2 清理与文档修正（worker，group A，与 T1 并行）\n按调研 F 的清单逐条做，全部 S/M 级：\n- `ui/app.py:211-212` 键码差值映射 → 显式映射表（`1/2/3/4` → Action）。\n- `ui/app.py:269-271` 资源自检 → 改用 `ui/theme.py:77-90` 的 `missing_assets()`。\n- `ui/theme.py:130` `button_rects` 返回注解 → `dict[int, pygame.Rect]`。\n- `ui/app.py:141,143-144` `last_now` 类属性 → 移入 `__init__`。\n- `core/__init__.py:16-31` `__all__` → 补 `strength_ordinal` / `strongest_hand` / dealing 相关符号（保持惰性导入不变）。\n- `README.md:28` 「6 行」→ 实际行数；`README.md:44-48` 架构图箭头方向改正（scripts/ 上移为入口层）；\n  `README.md:63` time.sleep 声明改为不 overclaim 的两行表述（pytest 只扫 ui/，scripts/ 由\n  `tests/baseline/repro_d7_timing.py` 守护）。\n- `pyproject.toml:42` 残留的「备份」字样；`README.md:73` 目录说明补 `card_pic备用/`、`login/` 残留。\n\n**约束**：不碰 `core/rules.py`、`core/strength.py`、`core/dealing.py` 的机制；不碰 `agents/dqn.py`。\n改动前后各跑一次 `pytest`，对比**没有既有测试被打红**。\n\n## Phase 3 — T3 交互侧接线（worker，group B，依赖 T1）\n- `ui/app.py:25` `DEFAULT_CHECKPOINT` 指向自博弈产出的权重文件名（命名契约由 T1 定）。\n- checkpoint 路径做成可配置（CLI 参数或环境变量），启动时校验存在性；**缺失时给出明确警告**\n  而不是静默回退（保留回退但必须可见）。\n- 机器推理路径改为加载自博弈权重后 `epsilon == 0.0`（贪心），并新增断言测试。\n- 若 T2 已改键码映射与资源自检，本 Task 不重复改（按依赖顺序，T3 只做接线相关部分）。\n\n**测试**：新增/扩展 `tests/test_ui.py`：checkpoint 缺失时启动有可见告警；加载成功时\n`agent.epsilon == 0.0`；自博弈权重可被 `from_checkpoint` 直接加载（4×6）。\n\n## Phase 4 — T2 训练与评估（worker，group B，依赖 T1）\n1. **先测速**：跑 5 局，测墙钟耗时（参考 `tests/test_scripts.py:81-84` 的 <60s 上界）。\n2. **定局数**：按测速结果定一个 **≤100 轮**（硬上限）且能在时限内跑完的局数。\n3. **正式训练**：CPU 跑自博弈训练，产出主策略 checkpoint（策略文件）与对手 checkpoint；\n   记录双方胜率与动作分布，确认**无塌缩**（胜率不一边倒、动作分布不退化为单一动作）。\n   **执行方式**：`nohup python -m scripts.train ... > run/train.log 2>&1 &` 后台跑，\n   worker 轮询日志，避免单次工具调用阻塞 20+ 分钟。\n4. **双 DQN 评估**：`scripts/evaluate.py` 增加双 checkpoint 对战模式，输出双方胜率。\n5. **权重落地**：权重按 `.gitignore` 规则不进版本库；给出明确的获取方式（训练命令 + 输出路径）\n   写入 README 与 `docs/ARCHITECTURE.md`；CI 步骤补上生成权重或在缺权重时显式 skip。\n\n**约束**：训练必须固定种子可复现；训练局数 ≤ 100 轮；不删除仓库既有文件。\n\n## Phase 5 — T3 玩家 vs 机器对抗（worker，group C，依赖 T2）\n- `ui/app.py:25` `DEFAULT_CHECKPOINT` 指向 T2 产出的策略文件。\n- checkpoint 路径可配置（CLI 参数或环境变量）；启动时校验存在性；\n  **缺失时给出明确告警**而不是静默回退（保留回退但必须可见）。\n- 机器加载后 `epsilon == 0.0`（贪心），不再是回退的 0.15 随机。\n- **端到端验证**：用 headless 方式模拟一局「人类输入 → 机器应招 → 回合交替 → 结算」，\n  断言机器动作来自训练权重（非随机），且回合能正常结束。\n\n## Phase 6 — T5 终审与文档同步（reviewer + worker，依赖 T3/T4）\n1. **reviewer 逐条核对 9 条验收标准**，重点：\n   - 「不可碰」清单（7.1 状态契约 / 7.3 惰性建表 / 7.4 维度自适应 / 7.5 均匀发牌）是否被改动；\n   - D1-D9 回归测试是否仍全绿；\n   - 自博弈训练是否真的产生了**两个** checkpoint 且对称性/零和/座位交换生效；\n   - 机器对手加载后 `epsilon == 0.0`，不是回退的 0.15；\n   - README 三处是否已修正。\n2. **worker 更新 `docs/ARCHITECTURE.md`**：新增「自博弈训练」章节、机器对手接线变化、\n   权重获取与存放说明、7.6/7.7 条目的处置结果、重构后行号校正。\n3. 独立验证：跑 `pytest` + `ruff`，与重构前基线对比测试结果。\n\n## 验收门\n\n| 门 | 判据 |\n|---|---|\n| G1 自博弈引擎 | `scripts/train.py --opponent-mode self` 可跑；产出 2 个 checkpoint；summary 含双方胜率 |\n| G2 对称与零和 | 座位每局交换；双方奖励和为 0；测试覆盖 |\n| G3 真实策略文件 | 工作区存在自博弈训练产出的策略文件；UI 加载后 `epsilon == 0.0`；动作分布异于随机 |\n| G4 玩家 vs 机器 | headless 模拟一局：人类输入 → 机器应招 → 回合交替 → 结算，全程走通；机器动作为训练权重输出 |\n| G5 评估 | `scripts/evaluate.py` 双 DQN 对战可输出胜率 |\n| G6 重构完成 | 7.7 的 S/M 级条目 + 7.6 README 三处全部完成 |\n| G7 测试 | pytest + ruff 全绿；既有测试零打红 |\n| G8 文档 | `docs/ARCHITECTURE.md` 已同步，含自博弈章节与权重获取说明 |\n| G9 不可碰 | 「不可碰」清单零改动，由 reviewer 逐条核对 diff |\n\n## 回滚\n\n- 每个 Task 在独立 worktree 分支（`governance/<task-id>`）上完成，可按 Task 单独回滚。\n- 未合并到 main；合并由人工执行。\n",
+  "changeReason": "r4 = r3 内容 + 用户批准的参数调整（预算 60000000、训练上限 100 轮、任务顺序改为先训练后对抗），并修正 authority.paths：把通配占位符替换为显式目录枚举，使 Task 能按目录收窄授权（Task 授权路径必须是项目授权路径的子集，原写法导致任务无法建立）。r3/r2 = r1 + 本次重构授权。r1 的 outOfScope 明确禁止修改业务代码，而本任务的核心就是改代码。授权依据：①仓库内实测 0 个 .pth 权重，ui/app.py:57-62 静默回退为随机策略，机器其实不是训练过的 DQN；②架构知识库第 7 节给出 7.7 的 S/M/L 分级清单与 7.1-7.6 的高风险判定，明确哪些不可碰；③三份只读调研（management/evidence/investigation/）确认状态编码天然对称（agents/dqn.py:70-94）、无信息泄漏（core/rules.py:107-120），DQN 对抗 DQN 在现有架构上可行，最小改造集中在 scripts/env.py 与 scripts/train.py；同时把项目预算从 1,900,000 提到 60,000,000（组织策略限制单个 Task < 2,000,000，故拆成 5 个 Task），并新增「不可碰」清单与训练局数上限为人工审批触发条件。"
+}

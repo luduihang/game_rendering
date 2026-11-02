@@ -43,7 +43,7 @@
       ],
       "maxConcurrent": 2,
       "maxAllocationTokens": 120000,
-      "timeoutMs": 1800000
+      "timeoutMs": 5400000
     },
     "reviewer": {
       "description": "独立审核与验证，不替 worker 补写",
@@ -57,7 +57,8 @@
         "read",
         "grep",
         "find",
-        "ls"
+        "ls",
+        "bash"
       ],
       "maxConcurrent": 2,
       "maxAllocationTokens": 60000,

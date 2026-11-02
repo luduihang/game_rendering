@@ -1,0 +1,11 @@
+# 交接
+
+目标：为「重构 + 人类 vs 机器 + DQN 对抗 DQN」做只读调研，产出可直接写入基线 PRD 的结论：(1) 训练侧 scripts/train.py 与 scripts/env.py 当前如何选对手、用什么状态/动作空间，能否改成 DQN-vs-DQN 自博弈；(2) 交互侧 ui/app.py 如何加载并推理机器对手（epsilon、状态编码、动作映射、checkpoint 缺失回退），换成自博弈权重要动哪些点；(3) 仓库现有 .pth 权重清单与各自维度；(4) 按 docs/ARCHITECTURE.md 第 7.7 节梳理 10 个小问题的可执行重构清单，并按第 7.1-7.6 节标出哪些是高风险不可碰。Main Agent 只做调度与编排。
+验收：明确给出「机器对手改为 DQN-vs-DQN 自博弈策略」的落地路径：改哪些文件、哪些函数签名、训练产出什么 checkpoint、交互入口如何加载，附 file:line；给出 DQN-vs-DQN 自博弈在现有代码上的可行性结论（含状态空间/动作空间是否自洽、对手如何选、epsilon 策略是否需要改）；列出仓库现有 .pth 权重文件的实际清单与各自维度（input_dim/action_dim），说明哪个可直接用、哪个需要新训；给出 docs/ARCHITECTURE.md 第 7.7 节全部 10 个小问题的可执行重构清单：每条含位置 file:line、建议改法、会被打红的测试（若有）、改动代价分级；给出第 7.1-7.6 节列出的 6 类高风险项在本次重构中应采取的策略（避开 / 可安全做 / 需要新测试先行）；全部结论带 file:line 证据；无法确认的明确标 UNKNOWN
+权限：{"paths":["agents","scripts","ui","core","tests","docs","README.md","CHANGELOG.md","pyproject.toml"],"tools":["bash","read","edit","write","grep","find","ls"],"readRepository":true,"writeWorkspace":false,"commitBranch":false,"integrateBranch":false}
+当前工作空间：无
+基线：无
+未提交文件：无工作空间
+最新交付：无
+未决审批：无
+接管前必须运行 workspace inspect，检查未提交和未跟踪文件。

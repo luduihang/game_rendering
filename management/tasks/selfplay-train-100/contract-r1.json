@@ -1,0 +1,52 @@
+{
+  "acceptance": [
+    "先完成 5 局测速并记录墙钟耗时",
+    "完成一轮不超过 100 局的 CPU 自博弈训练，实际产出可加载的策略文件（.pth）",
+    "训练 summary 含双方胜率、双方动作分布、耗时、局数",
+    "确认无塌缩：双方胜率不一边倒，动作分布不退化为单一动作",
+    "策略文件能被 DQNAgent.from_checkpoint 正常加载，input_dim=4 / action_dim=6",
+    "固定种子下训练可复现",
+    "产出训练报告（命令、耗时、胜率、产物路径）"
+  ],
+  "authority": {
+    "commitBranch": true,
+    "integrateBranch": false,
+    "paths": [
+      "scripts",
+      "tests",
+      "run",
+      "docs"
+    ],
+    "readRepository": true,
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write",
+      "grep",
+      "find",
+      "ls"
+    ],
+    "writeWorkspace": true
+  },
+  "budgetTokens": 1800000,
+  "dependencies": [
+    {
+      "requiredState": "accepted",
+      "taskId": "selfplay-engine"
+    }
+  ],
+  "goal": "在 CPU 上执行 DQN 自博弈训练（最多 100 局），实际产出一个可加载的策略文件（.pth），并产出训练报告。这是用户的第一优先事项。Main Agent 只调度编排，训练执行全部由子 Agent 完成。",
+  "kind": "executable",
+  "maxConcurrent": 3,
+  "maxDepth": 1,
+  "owner": "main-agent",
+  "revision": 1,
+  "scope": [
+    "scripts",
+    "tests",
+    "run",
+    "docs"
+  ],
+  "taskId": "selfplay-train-100"
+}

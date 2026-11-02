@@ -19,6 +19,147 @@
 
 
 
+
+
+
+
+
+
+
+
+
+## 2026-11-02 17:53 — # 独立核验报告 — cleanup-refactor @ 5170642（基线 6bd6253）
+
+核验方式说明：除「读码」外，所有标注 **实测** 的结论...
+# 独立核验报告 — cleanup-refactor @ 5170642（基线 6bd6253）
+
+核验方式说明：除「读码」外，所有标注 **实测** 的结论均为我在 worktree 内以只读方式运行命令所得；临时脚本均在 `/tmp`，未改动 worktree 任何文件；基线对比 worktree 已 `git worktree remove` 清理（`git worktree list` 已确认）。
+
+## 逐条结论
+
+### 1. 改动范围核对 — **通过**（实测确认）
+`git show --stat 5170642` 输出恰为 8 个文件，与 worker 声称完全一致：CHANGELOG.md +19 / README.md 53± / core/__init__.py 31± / pyproject.toml 2± / tests/test_purity.py +21 / tests/test_ui.py +39 / ui/app.py 42± / ui/theme.py 6±。`git show 5170642 -- scripts/ agents/ co...
+## 2026-11-02 17:51 — All verification complete
+All verification complete. Compiling the final review report.
+
+# 独立核验报告：DQN 对抗 DQN 自博弈训练机制（commit cb813cf，基线 6bd6253）
+
+## 逐条结论
+
+**1. 交付物与报告一致 — 通过（实测）**
+`git show --stat cb813cf`：恰好 4 个文件，stat 行数 163/71/136/252 与报告一致（numstat 细看：env 144+/19-、evaluate 50+/21-、train 130+/6-、test 252+/0-）。`git diff --name-only 6bd6253 cb813cf` 仅这 4 个文件；未动 core/ agents/ ui/ README.md。工作区 3 个未提交文件（.agent/*、PROGRESS.md）为 HANDOFF 已记载的接管前既有状态，不在 commit 内。
+
+**2. agents/dqn.py 零改动 — 通过（实测）**
+`git diff 6bd6253 cb813cf --...
+<!-- session-in-progress:start=2026-11-02T03:43:01.905Z -->
+## 2026-11-03 00:16 — Now let me answer your questions directly _(in progress)_
+Now let me answer your questions directly.
+
+## 1. Review 跑了多久？正常吗？
+
+**正常运行，没有卡。**
+
+| 指标 | 值 |
+|---|---|
+| 已运行时长 | 约 12 分钟（上限 40 分钟） |
+| turn | 22，33 秒前刚有输出 |
+| vLLM | 1 个请求生成中，0 等待 |
+| 上下文 | 29k / 131k（**22%，很健康**） |
+| **bash 调用** | **26 次** ✅ 工具链修复生效 |
+
+关键是 **bash 真的可用了**（前两轮 reviewer 连续栽在这里 —— `agentOverrides` 覆盖了 agent 定义文件的 tools 且我早前没提交，导致它们只能做静态审阅）。我已在目标 worktree 里实测确认：26 次 bash 调用。
+
+## 2. 项目现在能正常运行吗？—— **能，但有一个前提**
+
+我刚在 T3 worktree 跑了 3 局完整对局：
+
+```
+[信息] 已加载训练权重 dqn_model_1.pth（epsilon=...
+<!-- end-session-in-progress -->
+## 2026-11-02 17:35 — 收到，原地待命。当前状态：
+
+- 已完成：读取 contract-r1.json 与 HANDOFF.md，确认 worktree 存在（/home/kiple...
+收到，原地待命。当前状态：
+
+- 已完成：读取 contract-r1.json 与 HANDOFF.md，确认 worktree 存在（/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/selfplay-engine）。
+- 未开始任何静态或动态核验（按指令）。
+- 阻塞原因：本会话缺少命令执行工具，动态核验项（pytest、git diff、训练复现、checkpoint 加载、evaluate 实测等）无法执行。
+- 等待：supervisor 补授 bash 权限后重新派发同一核验任务；届时将按「临时脚本放 /tmp、基线对比用 /tmp 临时 worktree、区分实测确认与静态推断」执行，并输出逐条结论报告。
+
+```acceptance-report
+{
+  "criteriaSatisfied": [
+    {
+      "id": "criterion-1",
+      "status": "not-satisfied",
+      "evidence":...
+## 2026-11-02 16:02 — Investigation complete — all claims verified against source
+Investigation complete — all claims verified against source. Writing the final report.
+
+## 调查目标
+
+按 ARCHITECTURE.md 第 7/8 节对 game_rendering 做只读核对，产出带实际 file:line 的重构清单（调研 F）。本角色无 bash 工具，无法执行 `git status`；已读 `.git/HEAD` 确认分支 main；contract 授权 writeWorkspace=false，本次零写入。
+
+## 涉及文件（含行数）
+
+| 文件 | 行数 | 文件 | 行数 |
+|---|---|---|---|
+| ui/app.py | 283 | core/__init__.py | 31 |
+| ui/render.py | 253 | core/rules.py | 175 |
+| ui/theme.py | 165（report-C1 记 170，有出入，以实读为准） | core/strength.py | 58 |
+| ui/clock....
+## 2026-11-02 17:32 — Both runs are healthy — the signal was a false alarm (silence during a long comm...
+Both runs are healthy — the signal was a false alarm (silence during a long command). `selfplay-engine` has written `env.py` + `train.py`; `cleanup-refactor` is generating the ASCII diagram via a script. Let me monitor.
+## 2026-11-02 15:54 — ## 调查目标
+
+只读调查 game_rendering 训练侧（scripts/train.py、scripts/env.py、scripts/evaluat...
+## 调查目标
+
+只读调查 game_rendering 训练侧（scripts/train.py、scripts/env.py、scripts/evaluate.py、agents/dqn.py、agents/base.py），回答 DQN-vs-DQN 自博弈可行性，产出带 file:line 证据的结论。Git 状态：本会话无 bash 工具无法跑 `git status`；依据 `.git/logs/HEAD:1-11`（最后一条为 merge 提交 7109e29，无后续改动记录）+ HANDOFF.md「未提交文件：无」判定工作区干净；本调查全程零写入。
+
+## 涉及文件（含行数）
+
+| 文件 | 行数 | 角色 |
+|---|---|---|
+| scripts/env.py | 158 | 对局环境封装（DQN vs Robot） |
+| scripts/train.py | 123 | 无头训练入口 |
+| scripts/evaluate.py | 107 | 无头评估入口 |
+| agents/dqn.py | 223 | DQN 网络/智能体/状态编码 |...
+## 2026-11-02 15:52 — # 调研 E 报告：交互侧 —— 机器对手接线与替换点
+
+## 调查目标
+只读调查 game_rendering 交互侧（ui/app.py、ui/render...
+# 调研 E 报告：交互侧 —— 机器对手接线与替换点
+
+## 调查目标
+只读调查 game_rendering 交互侧（ui/app.py、ui/render.py、ui/theme.py、draw_me_vs_DQN_Plus.py、const.py、algorithm.py），给出机器对手接线、状态编码一致性、checkpoint 替换点、theme 资源自检、4 个已知小问题、RepeatedTimer 与 const.py 的 file:line 证据。
+
+## 涉及文件（含行数）
+| 文件 | 行数 | 角色 |
+|---|---|---|
+| ui/app.py | 282 | 控制器+事件循环+入口 main |
+| ui/render.py | 254 | 薄渲染层 |
+| ui/theme.py | 164 | 资源路径映射+Layout |
+| draw_me_vs_DQN_Plus.py | 14 | 唯一启动入口 |
+| const.py | 82 | 路径/颜色/尺寸常量 |
+| algorithm.py | 120 | RepeatedTimer+文...
+## 2026-11-02 15:37 — The document quality is high
+The document quality is high. Everything is complete.
+
+## 完成 ——架构知识库已交付并验收
+
+### 交付物
+
+**`docs/ARCHITECTURE.md`**（439 行，8 章节，**421 处 file:line 证据，覆盖 63 个文件**），位于分支 `governance/architecture-knowledge-base`（commit `671ad70`）。
+
+### 治理流程执行情况
+
+| 阶段 | 结果 |
+|---|---|
+| 基线 r1 | 已批准（ACTIVE，balanced profile） |
+| Task `architecture-survey` | **已取消** —— 3 个 reader 全因 15 分钟 timeout失败 |
+| Task `architecture-knowledge-base` | **已验收**（verification `V-2d6f4106`，独立 reviewer Run 签署） |
+| 子 Agent Run | 8 个全部 SUCCEE...
 ## 2026-11-02 13:50 — ## 核验结论（有条件通过）
 8 个测试文件、README 两处不一致、5 条技术陈述全部核验一致，仅 1 处文档措辞偏强需修正。
 

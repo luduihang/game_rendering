@@ -1,23 +1,24 @@
 {
-  "currentSessionId": "8a322ca8-1c65-4e8c-81a0-a43a8e089c47",
-  "previousSessionId": "c49ab02e-7162-4886-983a-e73eca262b55",
-  "previousSessionFile": "/home/kipley/.pi/agent/sessions/--home-kipley-Documents-code-learning-game_exercise--/2026-10-21T09-09-53-276Z_01a15db9-63fc-77b3-90b2-9dceaa7d9bc6.jsonl",
-  "previousSessionProject": "/home/kipley/documents/code/learning/game_exercise",
-  "projectKey": "/home/kipley/documents/code/learning/game_exercise",
+  "currentSessionId": "a1af29e0-19ff-4e1f-ad96-4b37d3a8c9d3",
+  "previousSessionId": "3bcbfb64-876e-42a4-8623-a865e499f053",
+  "previousSessionFile": null,
+  "previousSessionProject": "/home/kipley/documents/code/learning/game_rendering",
+  "projectKey": "/home/kipley/documents/code/learning/game_rendering",
   "cumulative": {
-    "inputTokens": 505263,
-    "outputTokens": 227074,
-    "cacheReadTokens": 49198592,
+    "inputTokens": 3292215,
+    "outputTokens": 150040,
+    "cacheReadTokens": 35896838,
     "cacheWriteTokens": 0,
     "cost": 0,
     "lessonHits": [],
     "skills": [],
     "gates": "unknown",
     "models": [
-      "deepseek-flash"
+      "Qwen3.8-27B",
+      "MiniMax-M3"
     ],
-    "turnIndex": 197,
-    "userTurns": 16,
+    "turnIndex": 310,
+    "userTurns": 1,
     "adjustedCost": 0,
     "warnedCost": false
   }

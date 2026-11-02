@@ -5,7 +5,7 @@
 权限：{"commitBranch":true,"integrateBranch":false,"paths":["."],"readRepository":true,"tools":["bash","read","edit","write","grep","find","ls"],"writeWorkspace":true}
 当前工作空间：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base
 基线：a6adf487be9f3bb29bbac496120f23462b45bfd4
-未提交文件：M .agent/telemetry-state.json； M .agent/telemetry.jsonl； M PROGRESS.md
+未提交文件：M .agent/telemetry-state.json； M .agent/telemetry.jsonl； M .pi/agents/reviewer.md； M .pi/settings.json； M PROGRESS.md
 最新交付：671ad70d3408080b97089dccf6d3c691711378d1
 交付文件：A docs/ARCHITECTURE.md；A management/evidence/review-R1-line-sampling.md；A management/evidence/review-R2-tests-readme.md；A management/evidence/verification/acceptance-checks.txt
 未决审批：无

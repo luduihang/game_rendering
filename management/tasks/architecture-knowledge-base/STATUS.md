@@ -5,7 +5,7 @@
 类型：executable
 父任务：无
 子任务：无
-批准：是
+批准：否
 审批规则：baseline-subset / auto / 风险 low / sha256:c811d8039f9e8ab212fcb462e7ff2923d58628c5f81fc55178f5e35c657d640a
 验收：已通过
 工作空间：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base

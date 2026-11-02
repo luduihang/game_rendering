@@ -1,0 +1,55 @@
+{
+  "acceptance": [
+    "ui/app.py 键码差值映射改为显式映射表",
+    "ui/app.py 启动时改用 ui/theme.py 的 missing_assets() 做资源自检",
+    "ui/theme.py button_rects 返回注解改为 dict[int, pygame.Rect]",
+    "ui/app.py 的 last_now 由类级属性移入 __init__",
+    "core/__init__.py 的 __all__ 补齐 strength_ordinal / strongest_hand / dealing 相关符号，且保持惰性导入不变",
+    "README.md 三处不一致全部修正：入口行数、架构图箭头方向（scripts 上移为入口层）、time.sleep 守护声明改为不 overclaim 的两行表述",
+    "pyproject.toml 与 README.md 的目录说明同步实际内容",
+    "core/rules.py、core/strength.py、core/dealing.py、agents/dqn.py 零改动",
+    "pytest 与 ruff 全绿，且相对改动前无既有测试被打红"
+  ],
+  "authority": {
+    "commitBranch": true,
+    "integrateBranch": false,
+    "paths": [
+      "ui",
+      "core",
+      "tests",
+      "docs",
+      "README.md",
+      "CHANGELOG.md",
+      "pyproject.toml"
+    ],
+    "readRepository": true,
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write",
+      "grep",
+      "find",
+      "ls"
+    ],
+    "writeWorkspace": true
+  },
+  "budgetTokens": 1800000,
+  "dependencies": [],
+  "goal": "按 docs/ARCHITECTURE.md 第 7.7/7.6 节完成 S/M 级重构清理与 README 不一致修正，零行为风险。本 Task 与 selfplay-engine 文件不重叠，可并行。Main Agent 只调度编排，编码全部由子 Agent 完成。",
+  "kind": "executable",
+  "maxConcurrent": 3,
+  "maxDepth": 1,
+  "owner": "main-agent",
+  "revision": 1,
+  "scope": [
+    "ui",
+    "core",
+    "tests",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "pyproject.toml"
+  ],
+  "taskId": "cleanup-refactor"
+}
