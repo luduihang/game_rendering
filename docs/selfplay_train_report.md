@@ -177,6 +177,17 @@ python -m scripts.evaluate \
 
 ## 9. 产物绝对路径
 
+> **唯一权威产物**（UI/下游应且只能加载这两个文件，隐藏层均为默认 (128,64)）：
+>
+> - 主策略：`run/final/dqn_sp_ep100_seed7.pth`
+> - 对手策略：`run/final/dqn_sp_opp_ep100_seed7.pth`
+>
+> **注意**：`run/` 根目录下若有同名旧文件（如 `run/dqn_sp_ep100_seed7.pth`，约 6 KB），
+> 则是历史遗留、隐藏层宽度不同（(32,16)）、不可使用 —— 用默认 config 的
+> `DQNAgent.from_checkpoint` 加载会报 `size mismatch for fc1.weight`。R-2569c185 返工
+> （2026-11-02）已删除本 worktree `run/` 下（除 `run/final/` 外）的全部陈旧 `.pth`，
+> 见 §13。
+
 - 主策略：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/selfplay-train-100/run/final/dqn_sp_ep100_seed7.pth`
 - 对手策略：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/selfplay-train-100/run/final/dqn_sp_opp_ep100_seed7.pth`
 - 训练 summary：`.../run/final/summary_seed7.json`
@@ -219,3 +230,33 @@ python -m scripts.evaluate \
 | 7 | from_checkpoint 可加载，hidden (128,64) | ✅ | §7 |
 | 8 | 同 seed 可复现 | ✅ | §8 sha256 一致 |
 | 9 | 配置固化 + 报告 | ✅ | §3 preset + 本报告 |
+
+## 13. 附录：复核返工（R-2569c185，2026-11-02）——补测试覆盖 + 清理陈旧产物
+
+独立 reviewer 复核 `ea2f024` 确认 9 条验收全部通过后，指出一个测试覆盖缺口与一个
+产物路径歧义，本次返工处理如下（commit 见分支历史）：
+
+1. **新增逐步零和测试**（覆盖缺口）：
+   `tests/test_selfplay_preset.py::TestStepwiseZeroSumWithShaping::test_every_step_exactly_zero_sum_including_nonzero_bet_shaping`。
+   既有零和测试只断言最后一步（恰为 fold、塑形增量 0），未锁住真正产生非零塑形增量
+   的押注步。新测试用 preset 值 `strength_shaping=50.0`、3 seeds（7/11/20261021）× 20 局
+   （420 个环境步）逐步精确断言 `agent_reward + opponent_reward == 0.0`，并断言确实
+   覆盖到非零塑形增量的押注步（实测 360/360 押注步塑形增量均非零）、对手跟注步
+   （360）、fold 步（60）、终局步（60）；实测最大残差 = 0.0（全部精确零和）。
+2. **新增 checkpoint 可加载性回归测试**：
+   `tests/test_selfplay_preset.py::TestSelfplayV1Preset::test_preset_checkpoint_loadable_with_default_config`。
+   真实跑 `--preset selfplay-v1 --episodes 100 --seed 7` 后，`DQNAgent.from_checkpoint`
+   用**默认 config（不传 hidden）**无异常加载，断言 fc1=(4→128)、fc2=(128→64)、
+   fc3=(64→6)、`epsilon == 0.0`（主/对手两个产物均断言）。
+3. **陈旧产物清理**（路径歧义）：删除 `run/` 下（除 `run/final/` 外）全部陈旧 `.pth`，
+   共 45 个：其中 30 个隐藏层为 (32,16)（约 6 KB，含 `run/` 根目录 3 个同名文件
+   及 `k1/ k2a/ k2b/ probe_v1/ repro/ robust_1..3/ robust_7/`），15 个为 (128,64) 的
+   历史实验副本（`base100/ clireg/ repro2/ sped5/ speed5/`，其中 `repro2/` 与
+   `run/final/` 逐字节一致、即 §8 的复现证据，sha256 已记录于 §8，文件本体已清理）。
+   `run/` 下现仅存 `run/final/` 三个 `.pth`（§9 唯一权威产物，sha256 与 §8 一致）；
+   各实验目录的 summary/eval JSON 证据文件保留未动。被删文件均被 `.gitignore` 覆盖，
+   不产生 git 变更。
+4. **测试与 lint 结果**：`python -m pytest tests/ -q` = **8 failed, 131 passed**
+   （8 个失败与基线 `6bd6253` 完全相同：缺被 `.gitignore` 忽略的 `dqn_model_1.pth`，
+   失败集合逐条一致，无新增失败；2 passed 为本次新增）。
+   `python -m ruff check .` = All checks passed。
