@@ -65,6 +65,23 @@ class TestTicker:
             assert "time.sleep(" not in path.read_text(encoding="utf-8"), f"{path.name} 含 time.sleep"
 
 
+class TestKeyMapping:
+    def test_key_map_covers_all_actions_with_unique_keys(self):
+        """显式映射表必须与 Action 一一对应：每个 Action 恰好一个键码。"""
+        import pygame
+
+        from ui.app import key_to_action_map
+
+        key_map = key_to_action_map()
+        assert set(key_map.values()) == set(Action), f"映射表未覆盖全部 Action: {key_map}"
+        assert len(key_map) == len(Action), "键码与 Action 必须一一对应（无重复）"
+        # 具体映射与 README 操作说明一致：1-4 押注、F 弃牌、C 看牌
+        assert key_map[pygame.K_1] is Action.BET_10
+        assert key_map[pygame.K_4] is Action.BET_100
+        assert key_map[pygame.K_f] is Action.FOLD
+        assert key_map[pygame.K_c] is Action.COMPARE
+
+
 class TestEventLoop:
     def test_quit_is_handled_during_wait(self):
         """D7-b：等待期间收到 SDL_QUIT 必须立即退出，而不是卡死。"""
@@ -207,9 +224,31 @@ class TestEntryAndAssets:
         assert set(asset_paths()) >= {"background", "card_back", "card_dir", "font_main", "font_ui"}
         assert isinstance(missing_assets(), list)
 
+    def test_startup_asset_check_reports_specific_missing(self, monkeypatch, tmp_path):
+        """启动自检必须报出具体缺失资源名，而不是只查 src/ 目录存在性。"""
+        import const
+        from ui.app import check_assets
+
+        monkeypatch.setattr(const, "Background", tmp_path / "no_such_bg.png")
+        monkeypatch.setattr(const, "button_directory", tmp_path / "no_such_buttons")
+        missing = check_assets()
+        assert "background" in missing, f"未报出缺失的背景图: {missing}"
+        assert {f"button_{a}" for a in range(6)} <= set(missing), f"未报出缺失的按钮贴图: {missing}"
+
 
 class TestOriginalTextures:
     """原始贴图接入（下注按钮 / 玩家头像 / 金币图标）。"""
+
+    def test_button_rects_return_pygame_rects(self):
+        """button_rects 返回值必须是 pygame.Rect（注解已精确化，这里钉住运行时类型）。"""
+        import pygame
+
+        from ui.theme import Layout
+
+        rects = Layout().button_rects((0, 1, 4))
+        assert set(rects) == {0, 1, 4}
+        for rect in rects.values():
+            assert isinstance(rect, pygame.Rect)
 
     def test_button_textures_exist_for_all_actions(self):
         from ui.theme import BUTTON_IMAGES, button_image_path

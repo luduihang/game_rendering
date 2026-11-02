@@ -61,3 +61,24 @@ def test_core_declares_no_heavy_dependencies():
             if re.search(rf"^\s*(?:import\s+{name}|from\s+{name}[\s.])", text, re.MULTILINE):
                 heavy.append(f"{path.name}:{name}")
     assert not heavy, f"core/ 不应依赖 {heavy}"
+
+
+def test_import_core_does_not_build_strength_table():
+    """全新解释器里 `import core` 后，22100 手强度表的 lru_cache 仍应为空（惰性建表不被触发）。
+
+    在子进程中跑以保证「全新解释器」：同进程内其它测试可能已触发建表。
+    """
+    import subprocess
+    import sys
+
+    repo_root = CORE_DIR.parent
+    code = (
+        "import core; "
+        "from core import strength; "
+        "i = strength._ranked_keys.cache_info(); "
+        "assert i.hits == 0 and i.currsize == 0, f'import core 触发了建表: {i}'"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, cwd=repo_root
+    )
+    assert result.returncode == 0, f"新解释器 import core 断言失败: {result.stdout} {result.stderr}"
