@@ -1,1 +1,66 @@
-# 阶段计划\n\n## Phase 0：基线（只读 + 运行快照）\n- T0.1 环境基线：创建 venv，安装现有依赖，记录版本；grep 全部入口与 import 图\n- T0.2 行为快照：离线跑一个短训练（少回合）与 UI 冒烟（SDL_VIDEODRIVER=dummy），记录当前行为（含看牌 bug 的实际表现），输出 baseline_report.md\n- 验收：报告提交，人工确认基线与 bug 行为\n\n## Phase 1：仓库卫生\n- T1.1 .gitignore + git rm --cached 产物（pycache/.pth/remember.txt/png）\n- T1.2 备份/ 归档到仓库外（需审批）；处理无扩展名文件（需审批）\n- T1.3 requirements.txt 固定版本；移除 sympy 误依赖\n- T1.4 重写 README（结构、入口、运行方式）\n- 验收：git status 干净；新 venv 一键安装成功\n\n## Phase 2：核心包 core/（TDD）\n- T2.1 数据模型：Card/Hand dataclass；牌型判定（六类）+ 穷举精确胜率（固定种子/确定性）；全量单元测试先行\n- T2.2 规则引擎 GameRoom：押注递增（rest_option 语义统一）、弃牌、看牌（修复 whose_turn bug，附修复前后对比测试）、金币结算\n- T2.3 旧脚本中重复实现标记为 deprecated 或删除（删除需任务内审批记录）\n- 验收：pytest 全绿；grep 确认判定/结算逻辑唯一实现；看牌回归测试证明 bug 已修\n\n## Phase 3：智能体层 agents/\n- T3.1 BaseAgent 接口（act(state, legal_actions) / observe）\n- T3.2 DQNAgent 独立模块：超参配置化、经验回放、目标网络、remember.txt 持久化可选\n- T3.3 Robot 合并（robot+robot2 → 单一可配置实现），显式 import numpy\n- 验收：接口冒烟测试；同一配置下 Robot 行为分布与旧 robot2 一致（抽样验证）\n\n## Phase 4：训练/评估入口 scripts/\n- T4.1 参数化训练入口（对手类型/回合/种子/设备/输出目录 → run/）\n- T4.2 可复现性验证：同种子两次运行逐位一致\n- T4.3 评估/对战入口（agent vs robot，输出统计）\n- 验收：无头跑通；可复现性脚本通过；产物不进 git\n\n## Phase 5：UI 层 ui/\n- T5.1 draw.py 抽为 ui/ 包，逻辑改为调用 core/agents；移除 UI 内重复规则与 sympy 误依赖\n- T5.2 资源路径集中管理（修复 '../myclient' 坏路径）\n- 验收：UI 冒烟（dummy 驱动）通过；core 不 import pygame（静态检查）\n\n## Phase 6：文档与质量收尾\n- T6.1 ruff 基线清零；条件允许加 CI（ruff+pytest）\n- T6.2 README 架构图 + 各入口说明；收尾报告（对照 successCriteria 逐条勾选）\n- 验收：CI 绿；收尾报告人工验收\n\n## 依赖关系\nP0 → P1 → P2 → P3 → P4、P5（P4 与 P5 可并行，同一工作区需串行调度）→ P6\n\n## 调度\n- 每 Phase 1-3 个内部任务，maxDepth=1，maxConcurrent=2；触发人工审批条件的动作一律先挂起请示。
+# PLAN —— 架构知识库建设（Task 1: architecture-survey）
+
+## 角色分工（基线硬约束）
+
+**Main Agent（本次会话）**：只做调度与编排。不亲自读业务代码、不亲自写 `docs/ARCHITECTURE.md`。
+职责限于：定义目标与验收标准、切分任务、派发 reader、审阅交付、维持基线。
+
+**Child Agent（reader × 3）**：唯一的执行者。实际阅读代码、收集证据、撰写知识库章节。
+
+## 执行步骤
+
+### Phase 0 — 基线与任务（Main）
+1. `governance_project_draft` 记录 r1 基线（PRD + contract + plan）。
+2. 人工 `project approve 1`。
+3. `governance_task_create` 建立 Task `architecture-survey`（executable，internal，预算 1,800,000，
+   maxDepth 1，maxConcurrent 3）。
+
+### Phase 1 — 三路并行调查（Child × 3，均为 reader）
+按**互斥模块边界**切分，避免重复：
+
+| Run | 负责范围 | 交付章节 |
+|---|---|---|
+| A | `core/` + `algorithm.py` + `const.py` | 领域层：牌型/强度/发牌/规则的职责、数据结构、精确表生成、依赖禁令 |
+| B | `agents/` + `scripts/` + `draw_me_vs_DQN_Plus.py` | 智能体层与入口层：BaseAgent 契约、DQN 状态空间与 checkpoint、训练/评估可复现性 |
+| C | `ui/` + `tests/` + `src/` 资源引用 + CI | 表现层与质量守护：事件循环/节奏器/非阻塞输入、测试守护的约束清单、资源路径 |
+
+每个 reader 的输出格式统一为：
+`调查目标 / 涉及文件 / 关键代码位置（file:line）/ 调用关系 / 发现的问题 / 结论与建议`，
+并明确区分 **已核实**（有行号）与 **UNKNOWN**（无法确认）。
+
+### Phase 2 — 汇总成文（Child，worker 或 reviewer）
+1. 先由 Main 汇总三份报告为 `docs/ARCHITECTURE.md` 骨架大纲（含待填空位）。
+2. 派发一个 worker 把三份报告的证据填入大纲，产出完整 `docs/ARCHITECTURE.md`。
+3. 派发 reviewer 逐条核对：每条结论是否有 `file:line` 证据；是否与 `tests/` 或 README 冲突；
+   是否有越权改动业务代码。
+
+### Phase 3 — 交付与验收
+1. `governance_main_deliver` 提交 HEAD 作为交付。
+2. 独立验证：核对 `docs/ARCHITECTURE.md` 的 5 条验收标准。
+3. 人工验收：确认知识库可用于后续重构决策。
+
+## 章节结构（`docs/ARCHITECTURE.md`）
+
+1. 概览与生成时的 commit
+2. 分层结构与依赖方向（含「不得依赖」清单）
+3. 模块职责表（逐模块：路径、职责、关键符号、对外接口）
+4. 关键调用链（入口 → 领域 → 智能体 → 渲染，含 pygame 事件循环）
+5. 数据流与状态管理（谁持有权威状态、如何查询）
+6. 被测试锁定的行为清单（测试文件 → 守护的约束）
+7. 重构风险点（改这里会牵连什么，附证据）
+8. 遗留疑点与未核实项（明确标注 UNKNOWN）
+
+## 验收门（全部必须通过）
+
+| 门 | 判据 |
+|---|---|
+| G1 文档存在 | `docs/ARCHITECTURE.md` 存在且包含上述 8 个章节 |
+| G2 证据密度 | 每条事实性结论带 `file:line`；抽样 20 条，命中率 ≥ 90% |
+| G3 无冲突 | 与 `tests/` 断言、README 声明无矛盾（reviewer 逐条核对） |
+| G4 零业务改动 | `git diff --stat HEAD~1` 仅含 `docs/ARCHITECTURE.md` 与治理目录 |
+| G5 Run 终态 | 3 个 reader Run 均 SUCCEEDED，交付物含证据 |
+
+## 回滚
+
+`docs/ARCHITECTURE.md` 为新增文件，删除即可回滚；不触碰任何既有文件。
+

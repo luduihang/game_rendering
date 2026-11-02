@@ -31,3 +31,6 @@ me_vs_qn_stats.png
 .DS_Store
 .idea/
 .vscode/
+
+# ---- Agent 遥测（本地运行产物，不进版本库）----
+.agent/

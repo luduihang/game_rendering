@@ -1,37 +1,37 @@
 {
-  "projectId": "7804c9ee-239d-4f72-ac9a-34c915425455",
+  "projectId": "0c68bf5a-2104-498a-9532-7a2f6f2384f3",
   "revision": 1,
-  "name": "game_exercise 架构优化（炸金花卡牌游戏 + DQN 训练实验重构）",
-  "goal": "在不改变游戏功能与玩法的前提下，将 game_exercise 从\"根目录平铺脚本 + 大量复制粘贴\"重构为可测试、可复现、可维护的 Python 包结构：核心游戏规则（core）、AI 智能体（agents）、UI（ui）、训练/评估入口（scripts）分层，修复已发现规则 bug，用穷举精确计算替代蒙特卡洛胜率估算，补齐依赖管理、测试与静态检查。",
+  "name": "game_rendering 架构知识库与证据化重构依据",
+  "goal": "建立一份可被检索、有代码证据的架构知识库（docs/ARCHITECTURE.md），让后续任何重构提议都能引用具体文件路径与行号；同时把「Main Agent 只做调度与编排、不亲自实现」固化为基线约束。",
   "inScope": [
-    "仓库卫生：新增 .gitignore；将 __pycache__/、*.pth、remember.txt、统计 png 移出版本跟踪（git rm --cached）；备份/ 目录整体移出仓库归档到仓库外；重写 README（现状仅一行）",
-    "依赖管理：requirements.txt 固定 pygame/torch/numpy/scipy/matplotlib 版本；移除误引入的 sympy 依赖；处理 numpy 2.x 下 np.trapz 废弃问题",
-    "核心包 core/：牌堆、牌型判定（单张/对子/顺子/金花/顺金/三张）、比大小、押注与结算规则独立成包；用穷举（C(52,3)=22100 全量）+ 固定种子替代 Cards_Probability 的 2000 次蒙特卡洛抽样，胜率计算变为确定性精确值；移除 card_deck.py 模块级 import 副作用",
-    "修复已知规则 bug：'看牌'结算忽略 whose_turn 导致输方被判胜；rest_option（最低可押选项）在 core 与 draw.py 中语义不一致，统一为'不低于已出现的最大押注选项'",
-    "去重：合并 10+ 份重复的 Game_room/DQN/DQNAgent 为单一实现，提供统一 API（get_state / get_choice / step）",
-    "智能体层：定义 BaseAgent 接口；DQN 抽为独立可配置模块（超参、经验回放、目标网络、remember.txt 持久化保留为可选项）；合并 robot.py/robot2.py 为单个可配置 Robot；修复 robot 中 np 未显式导入问题",
-    "训练/评估入口 scripts/：参数化训练脚本（对手类型、回合数、随机种子、设备、输出目录）；产物（模型、记忆、统计图）写入 run/ 目录且不进 git；固定种子下两次运行结果一致",
-    "UI 层：draw.py 抽为 ui/ 包，成为 core 之上的薄渲染层；移除 UI 中复制的游戏逻辑与误引入依赖；核心包与训练入口不得 import pygame（无头可运行）",
-    "测试：pytest 套件——牌型判定六类全覆盖 + 边界/平局用例；游戏规则（押注递增、弃牌、看牌结算、金币结算）；智能体接口冒烟；训练入口离线冒烟",
-    "质量与文档：ruff 静态检查基线；README 架构说明与运行方式；条件允许时加 CI（ruff + pytest）"
+    "core",
+    "agents",
+    "ui",
+    "scripts",
+    "tests",
+    "docs",
+    "draw_me_vs_DQN_Plus.py",
+    "algorithm.py",
+    "const.py",
+    "README.md",
+    ".github"
   ],
   "outOfScope": [
-    "不新增游戏功能：不做联网对战、新角色、新玩法、新规则",
-    "不重训模型、不以提升模型胜率为目标（只保证训练入口可复现；完整重训属后续独立决策）",
-    "不重写 git 历史（仅停止跟踪新增提交中的产物文件）",
-    "不重新设计或替换美术/音频资源（仅允许移动路径与重命名文件，内容不变）",
-    "不做发布打包（pip 发布、PyInstaller、Docker 等）",
-    "不改动 management/ 治理目录内容"
+    "不修改任何业务代码逻辑（core/agents/ui/scripts/tests 一律只读）",
+    "不新增、升级或移除任何第三方依赖",
+    "不重构架构、不做性能优化、不引入新设计模式",
+    "不重训模型、不执行超过 10 分钟的训练运行",
+    "不改动 src/ 下的美术、字体与音频资源",
+    "不删除或重命名任何既有文件",
+    "不把 Main Agent 变成实现者：所有代码阅读与文档撰写由子 Agent 完成",
+    "不合并分支到 main（integrateBranch 由人工执行）"
   ],
   "successCriteria": [
-    "pytest 全绿：牌型判定覆盖全部六类及边界/平局，游戏规则关键路径（押注递增/弃牌/看牌/结算）有回归测试",
-    "手牌胜率为穷举精确值且确定性可复现；训练与 UI 不再依赖 2000 次蒙特卡洛抽样",
-    "仓库中 Game_room 与 DQN 网络定义各只剩一份实现（grep 验证）",
-    "核心包在无 pygame 的环境下可导入，训练入口可无头运行",
-    "固定随机种子下两次训练运行产出逐位一致（可复现性验证脚本通过）",
-    "在干净虚拟环境中 pip install -r requirements.txt 后可运行全部入口（训练、评估、UI 冒烟）",
-    "版本库不再跟踪 __pycache__、*.pth、remember.txt、统计 png；ruff 检查通过；README 可指导新环境跑通",
-    "'看牌'结算 bug 修复并有对应回归测试（修复前该用例失败）"
+    "docs/ARCHITECTURE.md 存在，含分层与依赖方向、模块职责表、关键调用链、数据流、被测试锁定的行为清单、重构风险点、遗留疑点共 8 个章节",
+    "文档中每条事实性结论都带 file:line 形式的证据引用",
+    "文档不存在与 tests/ 断言或 README 声明冲突的陈述",
+    "本次工作未修改任何业务代码：git diff --stat 仅含 docs/ARCHITECTURE.md 与治理目录",
+    "全部子 Agent Run 进入终态 SUCCEEDED 且交付物带证据"
   ],
   "authority": {
     "paths": [
@@ -41,7 +41,10 @@
       "bash",
       "read",
       "edit",
-      "write"
+      "write",
+      "grep",
+      "find",
+      "ls"
     ],
     "readRepository": true,
     "writeWorkspace": true,
@@ -51,21 +54,124 @@
   "delegationPolicy": {
     "allowInternalTasks": true,
     "maxDepth": 1,
-    "maxConcurrent": 2
+    "maxConcurrent": 3
   },
   "resourceLimits": {
-    "budgetTokens": 3000000
+    "budgetTokens": 1900000
   },
   "humanApprovalTriggers": [
-    "删除、移动或归档 备份/ 目录及任何美术/音频/模型资产",
-    "重命名中文文件/目录名（如 src/card_pic/ 下中文文件名、mymath/概率大小映射、introduction）",
-    "修改游戏规则语义（含修复看牌结算 bug 导致的判定结果变化），需在任务验收说明中展示修复前后行为对比",
+    "删除、重命名或移动任何既有文件（本次仅允许新增 docs/ARCHITECTURE.md）",
+    "修改 core/ agents/ ui/ scripts/ tests/ 下任何业务代码",
     "新增、升级或移除任何第三方依赖",
+    "改变 Main Agent 的角色定位（禁止亲自实现）",
+    "把子 Agent 模型从 vllm-local/Qwen3.8-27B 换成其它模型",
+    "提高委派深度（当前固定 1 层）或把 maxConcurrent 提到 3 以上",
     "任何 git 合并到 main（integrateBranch 需人工执行）",
-    "超出阶段计划或 PRD 范围的改动",
-    "完整重训模型或长时间占用 GPU 的训练运行"
+    "超出本基线范围的架构改动或新功能开发"
   ],
-  "prd": "# PRD：game_exercise 架构优化\\n\\n## 背景\\ngame_exercise 是一个 Python + pygame 的\\\"炸金花\\\"三张牌博弈游戏与 DQN/Q-learning 训练实验仓库。当前形态：根目录平铺约 15 个脚本（draw_* / nodraw_* 各训练脚本互相复制 Game_room、DQN、DQNAgent 各 10+ 份），mymath/ 为 AI 策略包（robot.py 与 robot2.py 近乎逐行重复），src/ 为全部美术与音频资产，另有整份旧版代码副本 备份/ 提交在版本库内。\\n\\n## 已识别问题（只读分析，2026-07 基线）\\n1. 规则 bug：看牌（action=5）结算 `if cards1_value < cards2_value: winner = 0` 忽略 whose_turn，看牌方输局反而判胜；rest_option 最低押注语义在 core 与 draw.py 间不一致（max vs min）。\\n2. 性能/确定性：手牌胜率由 2000 次蒙特卡洛抽样估计（Cards_Probability.get_probability/get_state），非确定且慢；C(52,3)=22100 可穷举精确计算。\\n3. 模块副作用：card_deck.py 在 import 时执行演示代码并 print。\\n4. 结构耦合：const.py 硬编码 '../game_exercise/...' 与 '../myclient/...' 坏路径、import pygame 并在类定义期创建 pygame.Rect；draw.py 误引入 `from sympy import false`；游戏逻辑写死在 UI；main() 被注释，无明确入口。\\n5. 隐式依赖：robot.py 使用 np 但未 import numpy（依赖星号导入泄漏）。\\n6. 工程卫生：无 requirements.txt、无测试、无 .gitignore、无 CI；__pycache__/、dqn_*.pth、remember.txt、统计 png 全部被 git 跟踪；np.trapz 在 numpy 2.x 已废弃；README 仅一行；存在无扩展名文件（introduction、mymath/概率大小映射）。\\n\\n## 用户\\n- 主要用户：仓库所有者本人（学习/实验用途），需要能在新环境快速跑通训练与 UI，并能读懂架构。\\n\\n## 目标（Goals）\\n- 单一事实来源：游戏规则与智能体定义各只有一份实现。\\n- 确定性：固定种子下训练可复现；胜率计算精确且确定。\\n- 可测试：核心规则 100% 有单元测试；bug 修复有回归测试。\\n- 可运行：干净虚拟环境 + requirements.txt 即可运行训练、评估、UI 全部入口；训练入口无头可跑（不依赖 pygame 显示）。\\n\\n## 非目标（Non-Goals）\\n见契约 outOfScope：不加功能、不重训模型、不改 git 历史、不动资产内容、不做发布打包。\\n\\n## 验收（Acceptance）\\n见契约 successCriteria，逐条可在任务验收时验证。\\n\\n## 风险\\n- 看牌结算 bug 修复会改变现有行为（现有训练产物 dqn_*.pth 是在错误规则下训练的）→ 需人工确认是否作废旧模型；默认只归档不删除。\\n- 中文文件/目录重命名涉及大量资产引用 → 列为单独审批项，可推迟。\\n- 环境未知（torch/pygame 版本）→ Phase 0 基线先安装并记录。",
-  "plan": "# 阶段计划\\n\\n## Phase 0：基线（只读 + 运行快照）\\n- T0.1 环境基线：创建 venv，安装现有依赖，记录版本；grep 全部入口与 import 图\\n- T0.2 行为快照：离线跑一个短训练（少回合）与 UI 冒烟（SDL_VIDEODRIVER=dummy），记录当前行为（含看牌 bug 的实际表现），输出 baseline_report.md\\n- 验收：报告提交，人工确认基线与 bug 行为\\n\\n## Phase 1：仓库卫生\\n- T1.1 .gitignore + git rm --cached 产物（pycache/.pth/remember.txt/png）\\n- T1.2 备份/ 归档到仓库外（需审批）；处理无扩展名文件（需审批）\\n- T1.3 requirements.txt 固定版本；移除 sympy 误依赖\\n- T1.4 重写 README（结构、入口、运行方式）\\n- 验收：git status 干净；新 venv 一键安装成功\\n\\n## Phase 2：核心包 core/（TDD）\\n- T2.1 数据模型：Card/Hand dataclass；牌型判定（六类）+ 穷举精确胜率（固定种子/确定性）；全量单元测试先行\\n- T2.2 规则引擎 GameRoom：押注递增（rest_option 语义统一）、弃牌、看牌（修复 whose_turn bug，附修复前后对比测试）、金币结算\\n- T2.3 旧脚本中重复实现标记为 deprecated 或删除（删除需任务内审批记录）\\n- 验收：pytest 全绿；grep 确认判定/结算逻辑唯一实现；看牌回归测试证明 bug 已修\\n\\n## Phase 3：智能体层 agents/\\n- T3.1 BaseAgent 接口（act(state, legal_actions) / observe）\\n- T3.2 DQNAgent 独立模块：超参配置化、经验回放、目标网络、remember.txt 持久化可选\\n- T3.3 Robot 合并（robot+robot2 → 单一可配置实现），显式 import numpy\\n- 验收：接口冒烟测试；同一配置下 Robot 行为分布与旧 robot2 一致（抽样验证）\\n\\n## Phase 4：训练/评估入口 scripts/\\n- T4.1 参数化训练入口（对手类型/回合/种子/设备/输出目录 → run/）\\n- T4.2 可复现性验证：同种子两次运行逐位一致\\n- T4.3 评估/对战入口（agent vs robot，输出统计）\\n- 验收：无头跑通；可复现性脚本通过；产物不进 git\\n\\n## Phase 5：UI 层 ui/\\n- T5.1 draw.py 抽为 ui/ 包，逻辑改为调用 core/agents；移除 UI 内重复规则与 sympy 误依赖\\n- T5.2 资源路径集中管理（修复 '../myclient' 坏路径）\\n- 验收：UI 冒烟（dummy 驱动）通过；core 不 import pygame（静态检查）\\n\\n## Phase 6：文档与质量收尾\\n- T6.1 ruff 基线清零；条件允许加 CI（ruff+pytest）\\n- T6.2 README 架构图 + 各入口说明；收尾报告（对照 successCriteria 逐条勾选）\\n- 验收：CI 绿；收尾报告人工验收\\n\\n## 依赖关系\\nP0 → P1 → P2 → P3 → P4、P5（P4 与 P5 可并行，同一工作区需串行调度）→ P6\\n\\n## 调度\\n- 每 Phase 1-3 个内部任务，maxDepth=1，maxConcurrent=2；触发人工审批条件的动作一律先挂起请示。",
-  "changeReason": "初始草稿：应用户要求完成只读分析后提交 PRD、项目契约与阶段计划，待人工批准"
+  "approvalPolicy": {
+    "version": 1,
+    "defaultEffect": "ask",
+    "rules": [
+      {
+        "id": "no-integrate",
+        "effect": "deny",
+        "risk": "high",
+        "match": {
+          "integrateBranch": true
+        }
+      },
+      {
+        "id": "no-credential-paths",
+        "effect": "deny",
+        "risk": "high",
+        "match": {
+          "pathsAny": [
+            ".env",
+            ".ssh",
+            ".aws",
+            ".gnupg",
+            ".npmrc",
+            "secrets",
+            "credentials"
+          ]
+        }
+      },
+      {
+        "id": "no-repo-internals",
+        "effect": "deny",
+        "risk": "high",
+        "match": {
+          "pathsAny": [
+            ".git",
+            ".pi",
+            ".github"
+          ]
+        }
+      },
+      {
+        "id": "no-deep-delegation",
+        "effect": "deny",
+        "risk": "medium",
+        "match": {
+          "maxDepthMin": 2
+        }
+      },
+      {
+        "id": "no-unbounded-budget",
+        "effect": "deny",
+        "risk": "medium",
+        "match": {
+          "minBudgetTokens": 2000000
+        }
+      },
+      {
+        "id": "read-only-survey-auto",
+        "effect": "auto",
+        "risk": "low",
+        "match": {
+          "taskKind": "internal",
+          "pathsAny": [
+            "core",
+            "agents",
+            "ui",
+            "scripts",
+            "tests",
+            "docs"
+          ],
+          "toolsAll": [
+            "read",
+            "grep",
+            "find",
+            "ls"
+          ],
+          "writeWorkspace": false,
+          "commitBranch": false,
+          "maxBudgetTokens": 50000
+        }
+      },
+      {
+        "id": "survey-doc-write-auto",
+        "effect": "auto",
+        "risk": "low",
+        "match": {
+          "taskKind": "internal",
+          "pathsAny": [
+            "docs"
+          ],
+          "toolsAll": [
+            "read",
+            "edit",
+            "write"
+          ],
+          "writeWorkspace": true,
+          "commitBranch": false,
+          "maxBudgetTokens": 200000
+        }
+      }
+    ]
+  },
+  "prd": "# PRD —— game_rendering 架构知识库与证据化重构依据\n\n## 背景\n\n`game_rendering`（炸金花三张牌博弈 + DQN 人机对战）已完成一次自内而外的分层重构：代码被整理为\n`core/`（纯逻辑）、`agents/`（智能体）、`ui/`（薄渲染）、`scripts/`（训练与评估入口）四层，并配了\npytest 与 ruff CI。但**重构的依据本身没有被沉淀**：新接手的人（或下一个 Agent）无法从仓库里快速回答\n「这个模块为什么长这样」「改动它会牵连什么」「哪些行为是被测试锁死的」。\n\n结果是每一次新改动都在赌：要么过度重构破坏已被测试锁定的行为，要么不敢动因而留下重复实现。\n\n## 目标\n\n1. 建立一份**可被检索、可被更新、有代码证据**的架构知识库，落在仓库内的 Markdown 文件中。\n2. 让后续任何重构提议都能**引用具体文件路径与行号**，而不是凭印象。\n3. 把「Main Agent 只做调度与编排，不亲自干活」写成**基线约束**，而不是口头约定。\n\n## 非目标\n\n- 不修改任何业务代码逻辑（本次只读调查 + 写文档）。\n- 不引入新依赖、不重构架构、不做性能优化。\n- 不重训模型、不跑长训练。\n\n## 当前状态核实\n\n已核实（verified，依据本次仓库读取）：\n\n- 仓库根：`/home/kipley/Documents/code/learning/game_rendering`，Git 分支 `main`，工作区有未提交的\n  `.agent/telemetry*` 与 `.pi/governance` 升级改动。\n- 四层目录均已存在且非空：`core/`（cards/evaluator/strength/dealing/rules）、`agents/`（base/dqn/robot）、\n  `ui/`（app/clock/render/theme）、`scripts/`（env/train/evaluate）。\n- 根目录仍有扁平脚本 `draw_me_vs_DQN_Plus.py`（README 称 6 行入口）、`algorithm.py`、`const.py`。\n- `docs/` 已有 `BASELINE-REPORT.md`、`FINAL-REPORT.md`、`PRD.md`、`PROJECT-PLAN.md`。\n- `tests/` 已有 `test_purity.py`（分层纯度守护）等 9 个测试文件；`README.md` 明确记录\n  「`core/` 不 import pygame / numpy / scipy / torch」由 `tests/test_purity.py` 守护。\n- `.github/workflows/ci.yml` 存在（ruff + pytest）。\n- 资源目录 `src/` 有 207 个受版本控制的文件（美术/字体/BGM），与 Python 逻辑分离。\n- `management/legacy/` 保存着上一轮治理（Project r1–r5、Phase 0–7 任务）的历史视图，可作背景参考，\n  但其内容是旧账本产物，不是当前事实来源。\n\n未核实（unverified，交由 reader 子 Agent 实测）：\n\n- 各模块之间的**实际调用关系**是否与 README 图示一致。\n- `core/strength.py` 的 C(52,3)=22100 穷举表是否仍在位、是否仍在生成期而非 import 期构建。\n- `ui/app.py` 的事件循环是否真正做到零阻塞、是否已无 `time.sleep`。\n- `agents/dqn.py` 的 `from_checkpoint` 是否按 checkpoint 实际维度构建网络。\n- `tests/` 覆盖与实际缺陷的对应关系（哪些缺陷已修、哪些仍开放）。\n\n## 约束\n\n- **Main Agent 不亲自做实现工作**。本基线的 Main Agent 职责是：提出目标与验收标准、拆分任务、\n  派发 reader 子 Agent、审阅子 Agent 交付、维护基线与知识库文档本身。\n  子 Agent 负责实际的代码阅读、证据收集与文档撰写。\n- 委派深度固定为 1 层（Main → Child），Child 不得再委派。\n- 所有子 Agent 使用 `vllm-local/Qwen3.8-27B`（策略档 `qwen38`）。\n- reader 角色为只读：`read/grep/find/ls`，不得写代码、不得提交。\n- 产出文档写入仓库 `docs/ARCHITECTURE.md`，所有结论必须带文件路径与行号。\n- 不改动 `src/`（美术资源）、不改动 `core/`、`agents/`、`ui/`、`scripts/`、`tests/` 的业务逻辑。\n\n## 可验证验收标准\n\n1. `docs/ARCHITECTURE.md` 存在，内容含：分层与依赖方向、模块职责表、关键调用链、数据流、\n   被测试锁定的行为清单、重构风险点、遗留疑点。\n2. 文档中每条「事实性结论」都带 `文件路径:行号` 形式的证据引用。\n3. `docs/ARCHITECTURE.md` 中不存在与 `tests/` 或 README 冲突的陈述（由 reviewer 逐条核对）。\n4. 本次调查**未修改任何业务代码**：`git diff --stat` 除 `docs/ARCHITECTURE.md` 与治理目录外为空。\n5. 三个 reader 子 Agent 的 Run 全部进入终态（SUCCEEDED），且交付物带证据。\n\n## 风险与变更点\n\n| 风险 | 影响 | 应对 |\n|---|---|---|\n| reader 可能把 README 的自述当成事实 | 知识库失真，重构依据失效 | 要求所有结论必须回指代码行；无法确认标 UNKNOWN |\n| 文档与代码脱节 | 后续重构引用过期依据 | 文档标注生成时的 commit；后续改动时同步更新 |\n| 3 个 reader 重复调查同一模块 | 浪费预算 | Main Agent 按模块边界切分任务，互斥 |\n| 子 Agent 预算被 org 规则卡住 | 委派失败 | Task 预算固定在 2,000,000 以下，delegation 单笔 ≤ 30,000 |\n",
+  "plan": "# PLAN —— 架构知识库建设（Task 1: architecture-survey）\n\n## 角色分工（基线硬约束）\n\n**Main Agent（本次会话）**：只做调度与编排。不亲自读业务代码、不亲自写 `docs/ARCHITECTURE.md`。\n职责限于：定义目标与验收标准、切分任务、派发 reader、审阅交付、维持基线。\n\n**Child Agent（reader × 3）**：唯一的执行者。实际阅读代码、收集证据、撰写知识库章节。\n\n## 执行步骤\n\n### Phase 0 — 基线与任务（Main）\n1. `governance_project_draft` 记录 r1 基线（PRD + contract + plan）。\n2. 人工 `project approve 1`。\n3. `governance_task_create` 建立 Task `architecture-survey`（executable，internal，预算 1,800,000，\n   maxDepth 1，maxConcurrent 3）。\n\n### Phase 1 — 三路并行调查（Child × 3，均为 reader）\n按**互斥模块边界**切分，避免重复：\n\n| Run | 负责范围 | 交付章节 |\n|---|---|---|\n| A | `core/` + `algorithm.py` + `const.py` | 领域层：牌型/强度/发牌/规则的职责、数据结构、精确表生成、依赖禁令 |\n| B | `agents/` + `scripts/` + `draw_me_vs_DQN_Plus.py` | 智能体层与入口层：BaseAgent 契约、DQN 状态空间与 checkpoint、训练/评估可复现性 |\n| C | `ui/` + `tests/` + `src/` 资源引用 + CI | 表现层与质量守护：事件循环/节奏器/非阻塞输入、测试守护的约束清单、资源路径 |\n\n每个 reader 的输出格式统一为：\n`调查目标 / 涉及文件 / 关键代码位置（file:line）/ 调用关系 / 发现的问题 / 结论与建议`，\n并明确区分 **已核实**（有行号）与 **UNKNOWN**（无法确认）。\n\n### Phase 2 — 汇总成文（Child，worker 或 reviewer）\n1. 先由 Main 汇总三份报告为 `docs/ARCHITECTURE.md` 骨架大纲（含待填空位）。\n2. 派发一个 worker 把三份报告的证据填入大纲，产出完整 `docs/ARCHITECTURE.md`。\n3. 派发 reviewer 逐条核对：每条结论是否有 `file:line` 证据；是否与 `tests/` 或 README 冲突；\n   是否有越权改动业务代码。\n\n### Phase 3 — 交付与验收\n1. `governance_main_deliver` 提交 HEAD 作为交付。\n2. 独立验证：核对 `docs/ARCHITECTURE.md` 的 5 条验收标准。\n3. 人工验收：确认知识库可用于后续重构决策。\n\n## 章节结构（`docs/ARCHITECTURE.md`）\n\n1. 概览与生成时的 commit\n2. 分层结构与依赖方向（含「不得依赖」清单）\n3. 模块职责表（逐模块：路径、职责、关键符号、对外接口）\n4. 关键调用链（入口 → 领域 → 智能体 → 渲染，含 pygame 事件循环）\n5. 数据流与状态管理（谁持有权威状态、如何查询）\n6. 被测试锁定的行为清单（测试文件 → 守护的约束）\n7. 重构风险点（改这里会牵连什么，附证据）\n8. 遗留疑点与未核实项（明确标注 UNKNOWN）\n\n## 验收门（全部必须通过）\n\n| 门 | 判据 |\n|---|---|\n| G1 文档存在 | `docs/ARCHITECTURE.md` 存在且包含上述 8 个章节 |\n| G2 证据密度 | 每条事实性结论带 `file:line`；抽样 20 条，命中率 ≥ 90% |\n| G3 无冲突 | 与 `tests/` 断言、README 声明无矛盾（reviewer 逐条核对） |\n| G4 零业务改动 | `git diff --stat HEAD~1` 仅含 `docs/ARCHITECTURE.md` 与治理目录 |\n| G5 Run 终态 | 3 个 reader Run 均 SUCCEEDED，交付物含证据 |\n\n## 回滚\n\n`docs/ARCHITECTURE.md` 为新增文件，删除即可回滚；不触碰任何既有文件。\n",
+  "changeReason": "首个项目基线。game_rendering 已完成 core/agents/ui/scripts 四层重构，但重构依据未沉淀，后续改动缺少可追溯的事实来源。r1 建立架构知识库并把「Main Agent 只调度不实现」固化为基线约束。"
 }

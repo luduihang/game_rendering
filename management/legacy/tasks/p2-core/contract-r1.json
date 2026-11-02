@@ -1,0 +1,42 @@
+{
+  "acceptance": [
+    "core/ 包建立：cards.py（Card/Suit/Rank）、evaluator.py（六类牌型判定 + 比大小 + 花色决胜）、strength.py（穷举 22100 手精确表）、dealing.py（deal_uniform 默认 + draw_strength_biased 默认关）、rules.py（GameRoom 状态机 + IllegalAction）",
+    "D1 修复并先红后绿：看牌结算改为 winner = whose_turn if 自己手牌较大 else 1 - whose_turn；回归测试在修复前失败（tests/baseline/repro_d1_showcards.py 为证）、修复后通过",
+    "D6 修复并先红后绿：默认发牌均匀（分位均值≈0.5、最强档占比≈0.013）；draw_strength_biased() 显著更强且默认不被调用",
+    "D2 语义纳入契约测试：rest_option 单调不减（押注高档后不得降档）；GameRoom 对非法动作抛 IllegalAction",
+    "D4 修复：GameRoom 结束后拒绝继续行动，训练/对局循环不再出现结束后多走一步",
+    "手牌胜率穷举表：同一手牌任意次调用返回同一结果（确定性断言）；单次查询 < 0.1ms（对比基线 30.8ms 蒙特卡洛）",
+    "牌型判定六类全覆盖 + 边界/平局/花色决胜用例；pytest 全绿",
+    "断言 core/ 不 import pygame（静态检查 + 无 pygame 环境导入测试）",
+    "grep 断言 Card/判定/结算逻辑仅存在于 core/，无重复实现"
+  ],
+  "authority": {
+    "commitBranch": true,
+    "integrateBranch": false,
+    "paths": [
+      "."
+    ],
+    "readRepository": true,
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write"
+    ],
+    "writeWorkspace": true
+  },
+  "budgetTokens": 600000,
+  "dependencies": [],
+  "goal": "建立 core/ 核心包（纯逻辑、无 pygame），以 TDD 方式修复 D1（看牌结算比较方向与 whose_turn）、D6（默认均匀发牌）、D2（rest_option 单调不减纳入契约）与 D4（结束后拒绝继续行动），用穷举 22100 手精确表替代 2000 次蒙特卡洛胜率，并让牌型判定与结算逻辑成为唯一实现。",
+  "maxConcurrent": 2,
+  "maxDepth": 1,
+  "owner": "pi-session:01a15d4a-59f0-70f9-85ab-6adf6323a3cc",
+  "revision": 1,
+  "scope": [
+    "核心包 core/：Card/Rank/Suit 数据模型、牌型判定六类、比大小（含平局与花色决胜）、押注与结算规则；以一次性生成的 C(52,3)=22100 穷举精确表替代 Cards_Probability 的 2000 次抽样（基线实测单次 get_state 30.8ms，穷举表可降至 O(1) 查表），胜率变为确定性精确值；消除 card_deck.py 的模块级 import 副作用",
+    "修复已核实缺陷（每项附回归测试，基线已复现）：D1 看牌结算比较方向整体反转且忽略 whose_turn（实测 4/4 用例判胜相反），按已确认语义改为 winner = whose_turn if 自己手牌较大 else 1 - whose_turn；D2 draw.py::update_inform 的 rest_option = min(...)（基线实测押 100 后仍为 0）；D4 game_room_deepseek_cp.py::main 滞后 done 标志（基线实测结束后仍多调用 1 次 get_choice）；D8 权重维度与模型声明不匹配（dqn_model_0/1 为 4 维、dqn_final/ep* 为 9 维，混用导致 import 期崩溃），统一由 DQN 工厂按 checkpoint 实际维度构建；D9 保留策略未加载训练权重（epsilon=1.0 恒随机），改为显式 from_checkpoint('dqn_model_1.pth') 并让 select_action 真正生效",
+    "D6 发牌非均匀（已决策修复）：默认发牌改为均匀（每名玩家直接从洗好的牌堆取 3 张）；旧「三抽一取最优胜率」逻辑保留为显式可选 core.dealing.draw_strength_biased()，默认关闭；基线实测偏置路径手牌强度均值 0.766 vs 均匀 0.489、最强档占比 0.147 vs 0.013",
+    "D5 降级（不作缺陷修复）：get_state 读 cards1 经实测确认是本人手牌，无信息泄漏；真实问题为 __init__ 打印「机器人的手牌是 cards1」与 show_inform 打印「玩家0的手牌是 cards1」标签自相矛盾。处理：修正标签并改用具名属性 own_hand/opponent_hand，不改状态空间语义"
+  ],
+  "taskId": "p2-core"
+}

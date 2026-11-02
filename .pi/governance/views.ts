@@ -1,8 +1,16 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { GovernanceKernel } from "./kernel.ts";
-import type { ProjectContract, TaskContract } from "./types.ts";
+import { GovernanceKernel, reservedBudget } from "./kernel.ts";
+import { dataRoot, GovernanceStore } from "./store.ts";
+import { approvedSubagentPolicyDigest, loadSubagentPolicy } from "./subagent-policy.ts";
+import { readNativeRunStatus } from "./subagent-supervision.ts";
+import { queryTaskTree, type TaskTreeNode, taskAccepted } from "./task-tree.ts";
+import type { ApprovalEvaluation, GovernanceEvent, GovernanceState, ProjectContract, TaskContract } from "./types.ts";
 import { inspectWorkspace } from "./workspace.ts";
+import { finalizeWorkspaceArchive } from "./workspace-archive.ts";
+
+const VIEWS_VERSION = "0.2.1";
+const CLI = "node .pi/governance/cli.ts";
 
 function write(file: string, content: string): void {
 	fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -25,14 +33,210 @@ function writeDocument(file: string, content: string): void {
 	write(file, `${managed}${content}\n`);
 }
 
+function lastSequence(state: { events: GovernanceEvent[] }): number {
+	return state.events.length ? state.events[state.events.length - 1].sequence : 0;
+}
+
+function draftImpact(state: { events: GovernanceEvent[] }, revision: number): Record<string, unknown> | undefined {
+	for (const event of state.events) {
+		if (event.type !== "project.drafted") continue;
+		const payload = event.payload as {
+			value?: ProjectContract | null;
+			impact?: Record<string, unknown>;
+		};
+		if (payload.value?.revision === revision) return payload.impact;
+	}
+	return undefined;
+}
+
+function draftSection(contract: ProjectContract, impact: Record<string, unknown> | undefined): string[] {
+	const affected = Array.isArray(impact?.affectedTasks) ? (impact.affectedTasks as string[]) : [];
+	const delta = typeof impact?.budgetDeltaTokens === "number" ? impact.budgetDeltaTokens : null;
+	const authorityChanged = typeof impact?.authorityChanged === "boolean" ? impact.authorityChanged : null;
+	const approvalPolicyChanged =
+		typeof impact?.approvalPolicyChanged === "boolean" ? impact.approvalPolicyChanged : null;
+	return [
+		`## 待审核草稿 r${contract.revision}（未授权，禁止执行）`,
+		"",
+		"> 草稿只是提案：批准前不能创建任务、委派或修改代码。直接编辑本文件不构成审批。",
+		"",
+		`变更原因：${contract.changeReason}`,
+		`目标：${contract.goal}`,
+		"范围（inScope）：",
+		...contract.inScope.map((item) => `- ${item}`),
+		"排除（outOfScope）：",
+		...contract.outOfScope.map((item) => `- ${item}`),
+		`预算：${contract.resourceLimits.budgetTokens} tokens${
+			delta === null ? "" : `（较已批准版本 ${delta >= 0 ? "+" : ""}${delta}）`
+		}`,
+		`委派策略：深度 ≤ ${contract.delegationPolicy.maxDepth}；并发 ≤ ${contract.delegationPolicy.maxConcurrent}`,
+		`任务审批策略：${contract.approvalPolicy ? `v${contract.approvalPolicy.version}；默认 ${contract.approvalPolicy.defaultEffect}；规则 ${contract.approvalPolicy.rules.map((rule) => rule.id).join(", ") || "无"}` : "旧契约未定义；新任务默认待人工审批"}`,
+		`权限变化：${authorityChanged === null ? "未知" : authorityChanged ? "是" : "否"}`,
+		`审批规则变化：${approvalPolicyChanged === null ? "未知" : approvalPolicyChanged ? "是" : "否"}`,
+		`受影响任务：${affected.join(", ") || "无"}`,
+		`阅读：docs/PRD.md、docs/PROJECT-PLAN.md、management/project/r${contract.revision}/contract.json`,
+		`批准：\`${CLI} project approve ${contract.revision}\``,
+		`拒绝：\`${CLI} project reject ${contract.revision} "原因"\``,
+		"",
+	];
+}
+
+function taskStatus(state: ReturnType<GovernanceKernel["getState"]>, task: TaskContract): string {
+	// Cancellation must be checked before the approval check: cancelling a Task
+	// clears its approval, so a later check would report a deliberately killed
+	// Task as "待批准" — asking the operator to approve work they just killed.
+	if (state.cancelled[task.taskId]?.revision === task.revision) return "已取消";
+	return taskAccepted(state, task.taskId)
+		? "已验收"
+		: state.approved[task.taskId] === task.revision
+			? "已批准"
+			: "待批准";
+}
+
+function taskTreeRows(nodes: TaskTreeNode[], depth = 0): string[] {
+	return nodes.flatMap((node) => [
+		`${"  ".repeat(depth)}- ${node.taskId}@${node.revision} [${node.kind}]：${node.goal}；${
+			node.cancelled ? "已取消" : node.accepted ? "已验收" : node.approved ? "已批准" : "待批准"
+		}`,
+		...taskTreeRows(node.children, depth + 1),
+	]);
+}
+
+/**
+ * ROLE-8: render test reports without smoothing over what was not checked.
+ *
+ * Old ledger records hold free text and new ones hold objects; both are shown,
+ * but only a report with a verified log gets a sha256. A claim with no log says
+ * "未核验" rather than showing the number as if it had been read from anywhere.
+ */
+function testReportRows(tests: unknown): string[] {
+	if (!Array.isArray(tests) || tests.length === 0) return ["交付未记录测试结果。"];
+	const rows = ["| 命令 | 通过 | 失败 | 输出文件 | 核验 |", "| --- | --- | --- | --- | --- |"];
+	for (const entry of tests) {
+		if (typeof entry === "string") {
+			rows.push(`| ${entry} | - | - | - | 自由文本，未核验 |`);
+			continue;
+		}
+		const report = entry as {
+			command?: unknown;
+			passed?: unknown;
+			failed?: unknown;
+			logPath?: unknown;
+			verified?: {
+				path?: unknown;
+				sha256?: unknown;
+				observed?: { passed?: unknown; failed?: unknown } | null;
+			} | null;
+		};
+		const observed = report.verified?.observed;
+		const mismatch =
+			typeof observed?.passed === "number" && typeof report.passed === "number" && observed.passed !== report.passed
+				? `；日志读到 ${observed.passed}，声明 ${report.passed}`
+				: "";
+		const verdict = report.verified
+			? `已核验 ${String(report.verified.sha256 ?? "").slice(0, 12)}${mismatch}`
+			: "未核验（无输出文件）";
+		rows.push(
+			`| ${String(report.command ?? "")} | ${String(report.passed ?? "-")} | ${String(report.failed ?? "-")} | ${report.logPath ? `\`${String(report.logPath)}\`` : "无"} | ${verdict} |`,
+		);
+	}
+	return rows;
+}
+
+/**
+ * The archive page: what was moved aside, and what still counts as current.
+ *
+ * The separation is the point. A Task in here was approved and maybe accepted
+ * once; after Start Fresh it is history. Saying so in one place, with counts and
+ * the archive boundary, is what keeps "was accepted" from being read as "is
+ * accepted".
+ */
+function archiveView(state: GovernanceState): string {
+	const historicalAcceptances = state.events.filter((event) => event.type === "task.accepted").length;
+	const historicalApprovals = state.events.filter(
+		(event) => event.type === "task.approved" || event.type === "task.auto-approved",
+	).length;
+	const lines = [
+		"# 历史与归档",
+		"",
+		"本页记录已经不属于当前工作的历史。归档只改变展示归属，不删除账本事件。",
+		"",
+		"## 当前有效授权",
+		"",
+		`- 项目基线：${state.projectApproved ? `r${state.projectApproved.revision} / ${state.projectStatus}` : "无（未批准或已重置）"}`,
+		`- 治理重置边界：${state.resetBoundary === 0 ? "从未重置" : `账本序号 ${state.resetBoundary}`}`,
+		`- 归档边界：${state.archiveBoundary === 0 ? "从未归档" : `账本序号 ${state.archiveBoundary}`}`,
+		`- 当前 Task：${Object.keys(state.tasks).length}；当前 Run：${Object.keys(state.runs).length}`,
+		"",
+		"## 历史累计（仅审计，不代表当前授权）",
+		"",
+		...(historicalAcceptances || historicalApprovals
+			? [
+					`- 账本内 Task 批准事件：${historicalApprovals}`,
+					`- 账本内 Task 验收事件：${historicalAcceptances}`,
+					...(state.resetBoundary > 0 ? ["- 上列事件均早于重置边界或属于已归档记录，均不再授权执行"] : []),
+				]
+			: ["- 无历史批准或验收记录。"]),
+		"",
+		"## 归档记录",
+		"",
+		...(state.archiveOrder.length
+			? []
+			: [`无归档。运行 \`${CLI} project archive <项目ID> "原因"\` 归档当前工作。`, ""]),
+	];
+	if (!state.archiveOrder.length) return `${lines.join("\n")}\n`;
+	for (const archiveId of state.archiveOrder) {
+		const archive = state.archives[archiveId];
+		if (!archive) continue;
+		lines.push(
+			`### ${archiveId}`,
+			"",
+			`- 归档时间：${archive.archivedAt}`,
+			`- 操作者：${archive.actor}`,
+			`- 原因：${archive.reason || "未填写"}`,
+			`- 边界：账本序号 ≤ ${archive.boundary}`,
+			...(archive.snapshot
+				? [`- 工作区快照：${archive.snapshot.path}`, `- 归档前账本 SHA-256：${archive.snapshot.ledgerSha256}`]
+				: []),
+			`- 数量：Task ${archive.counts.tasks}、Delegation ${archive.counts.delegations}、Run ${archive.counts.runs}、Workspace ${archive.counts.workspaces}、交付 ${archive.counts.deliverables}、核验 ${archive.counts.verifications}、验收 ${archive.counts.accepted}`,
+			"",
+			"| Task | 类型 | 当时已验收 | 目标 |",
+			"| --- | --- | --- | --- |",
+			...Object.values(archive.records.tasks).map(
+				(task) =>
+					`| ${task.taskId} r${task.revision} | ${task.kind ?? "executable"} | ${archive.records.accepted[task.taskId] ? "是" : "否"} | ${task.goal.replace(/\|/g, "\\|")} |`,
+			),
+			"",
+			...(Object.values(archive.records.runs).length
+				? [
+						"| Run | Task | 状态 | 原生 Run |",
+						"| --- | --- | --- | --- |",
+						...Object.values(archive.records.runs).map(
+							(run) => `| ${run.runId} | ${run.taskId} | ${run.state} | ${run.nativeRunId ?? "无"} |`,
+						),
+						"",
+					]
+				: []),
+			"归档记录只读。继续旧工作需新建 Task 并引用本页，不得恢复归档中的 Task 执行。",
+			"",
+		);
+	}
+	return `${lines.join("\n")}\n`;
+}
+
 export function renderViews(project: string, kernel: GovernanceKernel): void {
 	const state = kernel.getState();
+	finalizeWorkspaceArchive(project, state);
 	const root = path.join(project, "management");
 	const projectId = state.events.find((event) => event.type === "project.initialized")?.payload.projectId;
 	const baseline = state.projectApproved;
 	const draft = state.projectDraft;
+	const pendingDraft =
+		draft && draft.revision !== baseline?.revision && state.projectRejectedRevision !== draft.revision ? draft : null;
 	if (draft) assertProjectDocumentsWritable(project);
-	for (const event of state.events.filter((entry) => entry.type === "project.drafted")) {
+	for (const event of state.events.filter(
+		(entry) => entry.type === "project.drafted" && entry.sequence > state.workspaceArchiveBoundary,
+	)) {
 		const version = event.payload.value as ProjectContract;
 		const revision = path.join(root, "project", `r${version.revision}`);
 		write(path.join(revision, "contract.json"), `${JSON.stringify(version, null, 2)}\n`);
@@ -43,33 +247,66 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 		writeDocument(path.join(project, "docs", "PRD.md"), draft.prd);
 		writeDocument(path.join(project, "docs", "PROJECT-PLAN.md"), draft.plan);
 	}
+	// The kernel's reservation rule, not a sum of every Task ever created: a cancelled
+	// or unapproved Task held no budget, and counting it here made the rendered
+	// PROJECT.md disagree with `gov status` and with what the kernel enforces.
+	const allocated = reservedBudget(state);
+	// GOV-003: present the effective baseline and the pending draft as
+	// separate sections so a preview is never mistaken for authorization.
 	write(
 		path.join(root, "PROJECT.md"),
 		[
 			"# 项目契约",
 			"",
-			`状态：${state.projectStatus}`,
-			`已批准版本：${baseline?.revision ?? "无"}`,
-			`待审草稿：${draft && draft.revision !== baseline?.revision && state.projectRejectedRevision !== draft.revision ? draft.revision : "无"}`,
+			"## 当前生效基线",
+			"",
+			...(baseline
+				? [
+						`状态：${state.projectStatus}`,
+						`已批准版本：r${baseline.revision}`,
+						`目标：${baseline.goal}`,
+						"范围（inScope）：",
+						...baseline.inScope.map((item) => `- ${item}`),
+						`预算：${baseline.resourceLimits.budgetTokens} tokens`,
+						`已分配任务预算：${allocated} tokens`,
+						"重要人工审批条件：",
+						...baseline.humanApprovalTriggers.map((item) => `- ${item}`),
+						`任务审批策略：${baseline.approvalPolicy ? `v${baseline.approvalPolicy.version}；默认 ${baseline.approvalPolicy.defaultEffect}；规则 ${baseline.approvalPolicy.rules.map((rule) => rule.id).join(", ") || "无"}` : "旧契约未定义；新任务默认待人工审批"}`,
+					]
+				: ["尚未批准任何基线。批准前不得创建任务或委派。"]),
+			"",
+			...(pendingDraft
+				? draftSection(pendingDraft, draftImpact(state, pendingDraft.revision))
+				: ["## 待审核草稿", "", "无。"]),
 			`最近拒绝的修订：${state.projectRejectedRevision ?? "无"}`,
-			`目标：${baseline?.goal ?? "尚未批准"}`,
-			`范围：${baseline?.inScope.join("；") ?? "无"}`,
-			`预算：${baseline?.resourceLimits.budgetTokens ?? "无"} tokens`,
-			`已分配任务预算：${Object.values(state.tasks).reduce((sum, task) => sum + task.budgetTokens, 0)} tokens`,
-			`重要人工审批条件：${baseline?.humanApprovalTriggers.join("；") ?? "无"}`,
 			"",
 		].join("\n"),
 	);
 	const tasks = Object.values(state.tasks);
-	const active = Object.values(state.runs).filter((run) => run.state === "RUNNING" || run.state === "PAUSED");
+	const allRuns = Object.values(state.runs);
+	const active = allRuns.filter((run) => run.state === "RUNNING" || run.state === "PAUSED");
 	const inbox = Object.values(state.decisions).filter((decision) => decision.result === "pending");
-	const projectPending = Boolean(
-		draft && draft.revision !== baseline?.revision && state.projectRejectedRevision !== draft.revision,
+	const projectPending = pendingDraft !== null;
+	const blocked = tasks.filter((task) =>
+		task.dependencies.some((dependency) => !taskAccepted(state, dependency.taskId)),
 	);
-	const blocked = tasks.filter((task) => task.dependencies.some((dependency) => !state.accepted[dependency.taskId]));
 	const last = state.events
+		.filter((event) => event.sequence > state.archiveBoundary)
 		.slice(-12)
 		.map((event) => `- ${event.time} ${event.type} ${event.taskId ?? ""} ${event.runId ?? ""}`);
+	let nextSteps: string[];
+	if (state.resetBoundary > 0 && !baseline)
+		nextSteps = [
+			`治理已重置：重新提交项目草稿（revision r${state.projectRevisionFloor + 1}），再批准`,
+			"历史 Task 与验收仍可查，但不再作为当前授权；继续旧工作请新建 Task 并引用归档",
+		];
+	else if (projectPending && pendingDraft)
+		nextSteps = [`处理项目契约 r${pendingDraft.revision} 的审批：见 management/INBOX.md`];
+	else if (state.projectStatus === "PAUSED") nextSteps = [`恢复项目：\`${CLI} project resume\`（先核对活跃 Run）`];
+	else if (inbox.length) nextSteps = [`处理 management/INBOX.md 中的 ${inbox.length} 项待决策`];
+	else if (!baseline) nextSteps = ["与 Pi 讨论项目目标与边界，使用 governance_project_draft 生成草稿"];
+	else if (!tasks.length) nextSteps = ["让 Pi 按已批准基线拆分任务（governance_task_create）"];
+	else nextSteps = ["跟踪 management/views/TASKS.md；Run 出错查看对应任务 STATUS.md"];
 	write(
 		path.join(root, "NOW.md"),
 		[
@@ -77,83 +314,226 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 			"",
 			...(typeof projectId === "string" ? [`项目 ID：${projectId}`, ""] : []),
 			`项目基线：${baseline ? `r${baseline.revision} / ${state.projectStatus}` : "待批准"}；草稿：${draft?.revision ?? "无"}。`,
+			...(state.resetBoundary > 0 && !baseline
+				? [
+						`治理已于账本序号 ${state.resetBoundary} 重置（历史保留，见 management/ARCHIVE.md）。需重新提交草稿并批准 r${state.projectRevisionFloor + 1}。`,
+					]
+				: []),
+			...(state.archiveBoundary > 0
+				? [
+						`工作历史已归档 ${state.archiveOrder.length} 次（最近边界 ${state.archiveBoundary}）；当前统计只含归档后的记录，历史见 management/ARCHIVE.md。`,
+					]
+				: []),
 			...(state.projectStatus === "PAUSED" && active.length
 				? ["注意：项目已暂停新授权，但已有 Run 仍需人工确认终止。"]
 				: []),
-			`任务 ${tasks.length}；已验收 ${Object.keys(state.accepted).length}；执行中 ${active.length}；阻塞 ${blocked.length}；待决策 ${inbox.length + Number(projectPending)}。`,
+			`任务 ${tasks.length}；已验收 ${tasks.filter((task) => taskAccepted(state, task.taskId)).length}；执行中 ${active.length}；阻塞 ${blocked.length}；待决策 ${inbox.length + Number(projectPending)}。`,
 			"",
 			"## 活跃 Agent",
 			"",
-			...active.map((run) => `- ${run.executorId}：${run.taskId} / ${run.runId} / ${run.workspaceId ?? "只读"}`),
+			...(active.length
+				? active.map((run) => {
+						const native = readNativeRunStatus(run);
+						return `- ${run.executorId}：${run.taskId} / ${run.runId} / ${run.workspaceId ?? "只读"}；插件 ${native.available ? (native.state ?? "未知") : "状态不可用"}${native.activityState ? `；注意 ${native.activityState}` : ""}`;
+					})
+				: ["暂无活跃 Agent。"]),
 			"",
 			"## 费用",
 			"",
-			...Object.values(state.runs).map(
-				(run) => `- ${run.runId}: ${run.costUsd === null ? "未知" : `$${run.costUsd}`}`,
-			),
+			...(allRuns.length
+				? allRuns.map((run) => `- ${run.runId}: ${run.costUsd === null ? "未知" : `$${run.costUsd}`}`)
+				: ["暂无费用记录。"]),
 			"",
 			"## 风险与遗留",
 			"",
-			...Object.values(state.deliverables).flatMap((artifact) =>
-				artifact.issues.map((issue) => `- ${artifact.taskId}: ${issue}`),
-			),
+			...Object.values(state.deliverables)
+				.flatMap((artifact) => artifact.issues.map((issue) => `- ${artifact.taskId}: ${issue}`))
+				.concat(Object.values(state.deliverables).length === 0 ? ["暂无风险与遗留项。"] : []),
 			"",
 			"## 最近事件",
 			"",
-			...last,
+			...(last.length ? last : ["暂无事件。"]),
+			"",
+			"## 下一步",
+			"",
+			...nextSteps.map((step) => `- ${step}`),
 			"",
 		].join("\n"),
 	);
+	// GOV-003: each pending item names the object, its impact, what is
+	// being decided, and an exact copyable command.
+	const inboxSections: string[][] = [];
+	try {
+		const loaded = loadSubagentPolicy(project);
+		if (loaded.policy.version === 2 && approvedSubagentPolicyDigest(state) !== loaded.digest)
+			inboxSections.push([
+				`## ${inboxSections.length + 1}. 子 Agent 路由策略（待批准）`,
+				"",
+				`- 对象：management/policies/subagents.json；SHA-256 ${loaded.digest}`,
+				"- 影响：新委派暂停；已有 Run 保留原路由快照。",
+				`- 阅读：\`${CLI} policy show\``,
+				`- 批准：\`${CLI} policy approve\``,
+				"",
+			]);
+	} catch (error) {
+		inboxSections.push([
+			`## ${inboxSections.length + 1}. 子 Agent 路由策略（无效）`,
+			"",
+			`- 错误：${error instanceof Error ? error.message : String(error)}`,
+			"- 委派已禁用；修正 management/policies/subagents.json 后重新检查。",
+			"",
+		]);
+	}
+	if (pendingDraft) {
+		const impact = draftImpact(state, pendingDraft.revision);
+		const affected = Array.isArray(impact?.affectedTasks) ? (impact.affectedTasks as string[]) : [];
+		const delta = typeof impact?.budgetDeltaTokens === "number" ? impact.budgetDeltaTokens : null;
+		const decisionText = baseline
+			? `是否将 r${pendingDraft.revision} 设为有效基线（批准前 r${baseline.revision} 继续有效）`
+			: `是否将 r${pendingDraft.revision} 设为首个有效基线（批准前仍无基线，任务与委派禁止执行）`;
+		inboxSections.push([
+			`## ${inboxSections.length + 1}. 项目契约 r${pendingDraft.revision}（草稿待批准）`,
+			"",
+			`- 对象：项目 ${typeof projectId === "string" ? projectId : "未初始化"} 修订 r${pendingDraft.revision}`,
+			`- 影响：受影响任务 ${affected.join(", ") || "无"}；预算 ${
+				delta === null ? "无差额" : `${delta >= 0 ? "+" : ""}${delta} tokens`
+			}；权限变化 ${typeof impact?.authorityChanged === "boolean" ? (impact.authorityChanged ? "是" : "否") : "未知"}；审批规则变化 ${typeof impact?.approvalPolicyChanged === "boolean" ? (impact.approvalPolicyChanged ? "是" : "否") : "未知"}`,
+			`- 待决定：${decisionText}`,
+			`- 阅读：docs/PRD.md、docs/PROJECT-PLAN.md、management/project/r${pendingDraft.revision}/contract.json`,
+			`- 批准：\`${CLI} project approve ${pendingDraft.revision}\``,
+			`- 拒绝：\`${CLI} project reject ${pendingDraft.revision} "原因"\``,
+			"",
+		]);
+	}
+	for (const decision of inbox) {
+		const task = state.tasks[decision.taskId];
+		const evaluation = state.events
+			.filter(
+				(event) =>
+					(event.type === "task.created" || event.type === "task.revised") &&
+					event.taskId === decision.taskId &&
+					(event.payload.value as TaskContract | undefined)?.revision === decision.revision,
+			)
+			.at(-1)?.payload.approvalEvaluation as ApprovalEvaluation | undefined;
+		inboxSections.push([
+			`## ${inboxSections.length + 1}. 任务 ${decision.taskId}@r${decision.revision}（${decision.kind}）`,
+			"",
+			`- 对象：决策 ${decision.decisionId}；任务 ${decision.taskId} 修订 ${decision.revision}${
+				task ? `（${task.goal}，预算 ${task.budgetTokens} tokens）` : "（任务记录缺失）"
+			}`,
+			`- 请求：${decision.request}`,
+			`- 提出者：${decision.requester}`,
+			...(evaluation
+				? [
+						`- 审批规则：${evaluation.ruleId}；风险 ${evaluation.risk}；策略摘要 ${evaluation.policyDigest ?? "旧契约无策略"}`,
+					]
+				: []),
+			"- 待决定：是否批准该任务修订",
+			`- 批准：\`${CLI} task approve ${decision.taskId} ${decision.decisionId}\``,
+			`- 拒绝：\`${CLI} decision reject ${decision.decisionId} "task revision"\``,
+			"",
+		]);
+	}
 	write(
 		path.join(root, "INBOX.md"),
 		[
 			"# 待人类决策",
 			"",
-			...(projectPending && draft
-				? [
-						`- 项目契约 r${draft.revision}：阅读 management/project/r${draft.revision}/contract.json、docs/PRD.md 和 docs/PROJECT-PLAN.md；使用 project approve ${draft.revision}`,
-						"",
-					]
-				: []),
-			...inbox.map(
-				(decision) =>
-					`- ${decision.decisionId}：${decision.kind} / ${decision.taskId}@${decision.revision} / ${decision.request}`,
-			),
-			"",
+			...(inboxSections.length
+				? [`共 ${inboxSections.length} 项。`, ""]
+				: ["无待决策事项。", "", "Pi 生成的内容只是建议；只有本地 CLI 的审批命令产生正式授权。", ""]),
+			...inboxSections.flat(),
 		].join("\n"),
 	);
+	const nodeId = (taskId: string) => taskId.replaceAll("-", "_");
 	write(
 		path.join(root, "views", "TASKS.md"),
 		[
 			"# 任务",
 			"",
-			...tasks.map(
-				(task) =>
-					`- ${task.taskId}@${task.revision}：${task.goal}；${state.accepted[task.taskId] ? "已验收" : state.approved[task.taskId] === task.revision ? "已批准" : "待批准"}；依赖 ${task.dependencies.map((dep) => dep.taskId).join(", ") || "无"}`,
-			),
-			"",
-			"```mermaid",
-			"graph TD",
-			...tasks.flatMap((task) =>
-				task.dependencies.map(
-					(dependency) => `  ${dependency.taskId.replaceAll("-", "_")} --> ${task.taskId.replaceAll("-", "_")}`,
-				),
-			),
-			"```",
+			...(tasks.length
+				? [
+						"## 工作树",
+						"",
+						...taskTreeRows(queryTaskTree(state)),
+						"",
+						"## 依赖关系",
+						"",
+						...tasks.map(
+							(task) => `- ${task.taskId}：${task.dependencies.map((dep) => dep.taskId).join(", ") || "无"}`,
+						),
+						"",
+						"```mermaid",
+						"graph TD",
+						...tasks.map((task) => `  ${nodeId(task.taskId)}["${task.taskId} ${taskStatus(state, task)}"]`),
+						...tasks.flatMap((task) =>
+							task.dependencies.map((dependency) => `  ${nodeId(dependency.taskId)} --> ${nodeId(task.taskId)}`),
+						),
+						"```",
+					]
+				: ["暂无任务。项目批准后可让 Pi 用 governance_task_create 登记任务。"]),
 			"",
 		].join("\n"),
 	);
-	const children = Object.values(state.delegations);
+	// Parent Task → Delegation → Run, grouped by Task.
+	//
+	// A flat list of delegations answered "what exists" but not "how is this Task
+	// going", which is the question the operator actually has. Each Run names its
+	// real model: a Run that was asked for one model and ran on another is the
+	// failure this panel exists to make visible.
+	const delegationsByTask = new Map<string, (typeof state.delegations)[string][]>();
+	for (const entry of Object.values(state.delegations)) {
+		const list = delegationsByTask.get(entry.taskId) ?? [];
+		list.push(entry);
+		delegationsByTask.set(entry.taskId, list);
+	}
+	const runLine = (runId: string): string => {
+		const run = state.runs[runId];
+		if (!run) return `      - Run ${runId}（记录缺失）`;
+		// The model the Run was asked for and the one it reported are the same field
+		// only when the evidence says so; here it is whatever the Run recorded.
+		const observed = run.routing?.model ?? null;
+		const agent = run.routing?.agent ?? run.executorId;
+		const usage = run.usageTokens === null ? "用量未知" : `${run.usageTokens} tokens`;
+		const retry = run.retryOf ? `，重试自 ${run.retryOf}` : "";
+		const evidence = observed === null ? "无模型证据" : `模型 ${observed}`;
+		return `      - Run ${run.runId}：${run.state}；${agent}；${evidence}；${usage}${retry}`;
+	};
+	const delegationSections = Object.values(state.tasks).flatMap((task) => {
+		const list = delegationsByTask.get(task.taskId) ?? [];
+		if (!list.length) return [];
+		// Completion is stated as counts and an acceptance state, never as a percentage:
+		// five Runs finishing says nothing about whether the Task's work was accepted.
+		const runsOf = (taskId: string) => Object.values(state.runs).filter((run) => run.taskId === taskId);
+		const accepted = state.accepted[task.taskId] ? "已验收" : "未验收";
+		const lines = [
+			`## ${task.taskId}：${task.goal}`,
+			"",
+			`- 状态：${taskStatus(state, task)}；${accepted}`,
+			`- 预算：${task.budgetTokens} tokens；授权路径 ${task.authority.paths.join(", ") || "无"}`,
+			"",
+		];
+		for (const entry of list) {
+			lines.push(
+				`- Delegation ${entry.delegationId}：${entry.executorId}`,
+				`    - 目标：${entry.objective}`,
+				`    - 授权：工具 ${entry.authority.tools.join(", ") || "无"}；路径 ${entry.authority.paths.join(", ") || "无"}；额度 ${entry.budgetTokens} tokens`,
+			);
+			const runs = runsOf(entry.taskId).filter((run) => run.delegationId === entry.delegationId);
+			if (!runs.length) lines.push("    - Run：尚未启动");
+			for (const run of runs) lines.push(`  ${runLine(run.runId)}`);
+		}
+		lines.push("");
+		return lines;
+	});
 	write(
 		path.join(root, "views", "DELEGATIONS.md"),
 		[
 			"# 委派",
 			"",
-			...children.map(
-				(entry) =>
-					`${"  ".repeat(entry.depth)}- ${entry.parentRunId ?? "主 Agent"} → ${entry.executorId}：${entry.taskId} / ${entry.delegationId}`,
-			),
-			"",
+			...(delegationSections.length
+				? delegationSections
+				: ["暂无委派。governance_delegate 启动的子 Agent 会记录在这里。", ""]),
 		].join("\n"),
 	);
 	write(
@@ -162,6 +542,9 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 			"# Git 版本关系",
 			"",
 			...Object.values(state.workspaces).map((workspace) => {
+				if (workspace.destroyedAt) {
+					return `- ${workspace.taskId}: ${workspace.baseCommit} → ${workspace.branch} → 已于 ${workspace.destroyedAt} 销毁`;
+				}
 				let head = "不可读取";
 				try {
 					head = inspectWorkspace(workspace).head ?? "不存在";
@@ -170,10 +553,17 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 				}
 				return `- ${workspace.taskId}: ${workspace.baseCommit} → ${workspace.branch} → ${head}`;
 			}),
+			...(Object.keys(state.workspaces).length === 0
+				? ["暂无工作空间。可写任务由 workspace create 建立独立 Git Worktree。"]
+				: []),
 			"",
 		].join("\n"),
 	);
-	for (const event of state.events.filter((entry) => entry.type === "task.created" || entry.type === "task.revised")) {
+	for (const event of state.events.filter(
+		(entry) =>
+			(entry.type === "task.created" || entry.type === "task.revised") &&
+			entry.sequence > state.workspaceArchiveBoundary,
+	)) {
 		const contract = event.payload.value as TaskContract;
 		write(
 			path.join(root, "tasks", contract.taskId, `contract-r${contract.revision}.json`),
@@ -181,6 +571,14 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 		);
 	}
 	for (const task of tasks) {
+		const approval = state.events
+			.filter(
+				(event) =>
+					(event.type === "task.created" || event.type === "task.revised") &&
+					event.taskId === task.taskId &&
+					(event.payload.value as TaskContract | undefined)?.revision === task.revision,
+			)
+			.at(-1)?.payload.approvalEvaluation as ApprovalEvaluation | undefined;
 		const runs = Object.values(state.runs).filter((run) => run.taskId === task.taskId);
 		const workspace = Object.values(state.workspaces).find((entry) => entry.taskId === task.taskId);
 		const deliverables = Object.values(state.deliverables).filter((entry) => entry.taskId === task.taskId);
@@ -188,9 +586,14 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 		const verification =
 			latest && Object.values(state.verifications).find((entry) => entry.deliverableId === latest.deliverableId);
 		let gitStatus = "无工作空间";
-		if (workspace) {
+		if (workspace?.destroyedAt) {
+			gitStatus = `已于 ${workspace.destroyedAt} 销毁；证据见账本 workspace.destroyed 事件`;
+		} else if (workspace) {
 			try {
-				gitStatus = inspectWorkspace(workspace).status.join("；") || "干净";
+				const inspection = inspectWorkspace(workspace);
+				// A missing directory is not a clean one: say so instead of reporting
+				// an empty status list as "干净".
+				gitStatus = !inspection.exists ? "目录不存在，需人工检查" : inspection.status.join("；") || "干净";
 			} catch {
 				gitStatus = "无法读取，需人工检查";
 			}
@@ -203,17 +606,50 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 				"",
 				`目标：${task.goal}`,
 				`修订：${task.revision}`,
+				`类型：${task.kind ?? "executable"}`,
+				`父任务：${task.parentTaskId ?? "无"}`,
+				`子任务：${
+					tasks
+						.filter((child) => child.parentTaskId === task.taskId)
+						.map((child) => child.taskId)
+						.join(", ") || "无"
+				}`,
 				`批准：${state.approved[task.taskId] === task.revision ? "是" : "否"}`,
-				`验收：${state.accepted[task.taskId] ? "已通过" : "未通过"}`,
-				`工作空间：${workspace?.path ?? "无"}`,
+				`审批规则：${approval ? `${approval.ruleId} / ${approval.effect} / 风险 ${approval.risk} / ${approval.policyDigest ?? "无策略摘要"}` : "历史任务未记录规则"}`,
+				`验收：${taskAccepted(state, task.taskId) ? "已通过" : "未通过"}${(task.kind ?? "executable") === "container" ? "（由全部子任务汇总）" : ""}`,
+				`工作空间：${workspace ? (workspace.destroyedAt ? `${workspace.path}（已于 ${workspace.destroyedAt} 销毁）` : workspace.path) : "无"}`,
 				`最新交付：${latest?.commit ?? "无"}`,
 				`验证：${verification?.result ?? "无"}`,
+				...(latest?.evidence
+					? [
+							`交付基线：${latest.evidence.baseCommit}`,
+							`交付改动：+${latest.evidence.additions} / -${latest.evidence.deletions}`,
+						]
+					: ["交付证据：历史记录未核对（提交早于 Git 校验）"]),
+				"",
+				"## 交付测试",
+				"",
+				...(!latest ? ["尚无交付。"] : testReportRows(latest.tests)),
+				"",
+				"## 交付文件",
+				"",
+				...(!latest?.evidence
+					? ["历史交付未记录文件级归属。"]
+					: latest.evidence.files.length
+						? [
+								"| 文件 | 变更 | 新增 | 删除 |",
+								"| --- | --- | --- | --- |",
+								...latest.evidence.files.map(
+									(file) => `| \`${file.path}\` | ${file.status} | ${file.additions} | ${file.deletions} |`,
+								),
+							]
+						: ["本次交付无文件改动。"]),
 				"",
 				"## Run",
 				"",
 				...runs.map(
 					(run) =>
-						`- ${run.runId} ${run.state}；Pi ${run.nativeRunId ?? "未知"}；Session ${run.sessionRef ?? "未知"}`,
+						`- ${run.runId} ${run.state}；Pi ${run.nativeRunId ?? "未知"}；原生状态 ${readNativeRunStatus(run).state ?? "不可用"}；Agent ${run.routing?.agent ?? "历史记录未知"}；模型 ${run.routing?.model ?? "未知"}；配置 ${run.routing?.modelProfile ?? run.routing?.tier ?? "未知"}；策略 ${run.routing?.policyDigest ?? "未知"}；Session ${run.sessionRef ?? "未知"}；检查：\`${CLI} run inspect ${run.runId}\`；终态对账：\`${CLI} run reconcile ${run.runId}\``,
 				),
 				"",
 			].join("\n"),
@@ -226,19 +662,82 @@ export function renderViews(project: string, kernel: GovernanceKernel): void {
 				`目标：${task.goal}`,
 				`验收：${task.acceptance.join("；")}`,
 				`权限：${JSON.stringify(task.authority)}`,
-				`当前工作空间：${workspace?.path ?? "无"}`,
+				`当前工作空间：${workspace ? (workspace.destroyedAt ? `${workspace.path}（已于 ${workspace.destroyedAt} 销毁）` : workspace.path) : "无"}`,
 				`基线：${workspace?.baseCommit ?? "无"}`,
 				`未提交文件：${gitStatus}`,
 				`最新交付：${latest?.commit ?? "无"}`,
+				...(!latest
+					? []
+					: latest.evidence
+						? [
+								`交付文件：${latest.evidence.files.map((file) => `${file.status} ${file.path}`).join("；") || "无"}`,
+							]
+						: ["交付文件：历史交付未记录"]),
 				`未决审批：${
 					inbox
 						.filter((decision) => decision.taskId === task.taskId)
 						.map((decision) => decision.decisionId)
 						.join(", ") || "无"
 				}`,
-				"接管前必须运行 workspace inspect，检查未提交和未跟踪文件。",
+				...((task.kind ?? "executable") === "container"
+					? ["容器任务只组织工作，不直接执行或接管工作空间。"]
+					: ["接管前必须运行 workspace inspect，检查未提交和未跟踪文件。"]),
 				"",
 			].join("\n"),
 		);
 	}
+	// History that is no longer current lives here. It is written from the archive
+	// records, never from the live projections, so an operator can tell at a
+	// glance which facts still authorize work and which are only recorded.
+	write(path.join(root, "ARCHIVE.md"), archiveView(state));
+	// GOV-004: deterministic manifest (no timestamps) so repeated renders
+	// are byte-identical and staleness is a sequence comparison.
+	const manifest = {
+		viewsVersion: VIEWS_VERSION,
+		projectId: typeof projectId === "string" ? projectId : null,
+		lastSequence: lastSequence(state),
+	};
+	write(path.join(root, ".view-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+export type ViewsStatus = {
+	fresh: boolean;
+	reasons: string[];
+	currentSequence: number;
+};
+
+/**
+ * GOV-004: detect stale or drifted projections without modifying anything.
+ * The event ledger is the authority for governance state; Git is the
+ * authority for code. Generated views are rebuildable snapshots.
+ */
+export function checkViews(project: string): ViewsStatus {
+	const kernel = new GovernanceKernel(new GovernanceStore(dataRoot(project)));
+	const state = kernel.getState();
+	const currentSequence = lastSequence(state);
+	const reasons: string[] = [];
+	const manifestFile = path.join(project, "management", ".view-manifest.json");
+	if (!fs.existsSync(manifestFile)) {
+		reasons.push("missing management/.view-manifest.json; run views render");
+	} else {
+		const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8")) as { lastSequence?: number };
+		if (typeof manifest.lastSequence !== "number" || manifest.lastSequence !== currentSequence)
+			reasons.push(
+				`stale: views at sequence ${manifest.lastSequence ?? "unknown"}, ledger at ${currentSequence}; run views render`,
+			);
+	}
+	const draft = state.projectDraft;
+	if (draft) {
+		for (const [name, content] of [
+			["PRD.md", draft.prd],
+			["PROJECT-PLAN.md", draft.plan],
+		] as const) {
+			const file = path.join(project, "docs", name);
+			if (fs.existsSync(file) && fs.readFileSync(file, "utf8") !== `${managed}${content}\n`)
+				reasons.push(
+					`drift: docs/${name} differs from ledger draft r${draft.revision}; run views render to restore`,
+				);
+		}
+	}
+	return { fresh: reasons.length === 0, reasons, currentSequence };
 }

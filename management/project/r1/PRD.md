@@ -1,1 +1,77 @@
-# PRD：game_exercise 架构优化\n\n## 背景\ngame_exercise 是一个 Python + pygame 的\"炸金花\"三张牌博弈游戏与 DQN/Q-learning 训练实验仓库。当前形态：根目录平铺约 15 个脚本（draw_* / nodraw_* 各训练脚本互相复制 Game_room、DQN、DQNAgent 各 10+ 份），mymath/ 为 AI 策略包（robot.py 与 robot2.py 近乎逐行重复），src/ 为全部美术与音频资产，另有整份旧版代码副本 备份/ 提交在版本库内。\n\n## 已识别问题（只读分析，2026-07 基线）\n1. 规则 bug：看牌（action=5）结算 `if cards1_value < cards2_value: winner = 0` 忽略 whose_turn，看牌方输局反而判胜；rest_option 最低押注语义在 core 与 draw.py 间不一致（max vs min）。\n2. 性能/确定性：手牌胜率由 2000 次蒙特卡洛抽样估计（Cards_Probability.get_probability/get_state），非确定且慢；C(52,3)=22100 可穷举精确计算。\n3. 模块副作用：card_deck.py 在 import 时执行演示代码并 print。\n4. 结构耦合：const.py 硬编码 '../game_exercise/...' 与 '../myclient/...' 坏路径、import pygame 并在类定义期创建 pygame.Rect；draw.py 误引入 `from sympy import false`；游戏逻辑写死在 UI；main() 被注释，无明确入口。\n5. 隐式依赖：robot.py 使用 np 但未 import numpy（依赖星号导入泄漏）。\n6. 工程卫生：无 requirements.txt、无测试、无 .gitignore、无 CI；__pycache__/、dqn_*.pth、remember.txt、统计 png 全部被 git 跟踪；np.trapz 在 numpy 2.x 已废弃；README 仅一行；存在无扩展名文件（introduction、mymath/概率大小映射）。\n\n## 用户\n- 主要用户：仓库所有者本人（学习/实验用途），需要能在新环境快速跑通训练与 UI，并能读懂架构。\n\n## 目标（Goals）\n- 单一事实来源：游戏规则与智能体定义各只有一份实现。\n- 确定性：固定种子下训练可复现；胜率计算精确且确定。\n- 可测试：核心规则 100% 有单元测试；bug 修复有回归测试。\n- 可运行：干净虚拟环境 + requirements.txt 即可运行训练、评估、UI 全部入口；训练入口无头可跑（不依赖 pygame 显示）。\n\n## 非目标（Non-Goals）\n见契约 outOfScope：不加功能、不重训模型、不改 git 历史、不动资产内容、不做发布打包。\n\n## 验收（Acceptance）\n见契约 successCriteria，逐条可在任务验收时验证。\n\n## 风险\n- 看牌结算 bug 修复会改变现有行为（现有训练产物 dqn_*.pth 是在错误规则下训练的）→ 需人工确认是否作废旧模型；默认只归档不删除。\n- 中文文件/目录重命名涉及大量资产引用 → 列为单独审批项，可推迟。\n- 环境未知（torch/pygame 版本）→ Phase 0 基线先安装并记录。
+# PRD —— game_rendering 架构知识库与证据化重构依据
+
+## 背景
+
+`game_rendering`（炸金花三张牌博弈 + DQN 人机对战）已完成一次自内而外的分层重构：代码被整理为
+`core/`（纯逻辑）、`agents/`（智能体）、`ui/`（薄渲染）、`scripts/`（训练与评估入口）四层，并配了
+pytest 与 ruff CI。但**重构的依据本身没有被沉淀**：新接手的人（或下一个 Agent）无法从仓库里快速回答
+「这个模块为什么长这样」「改动它会牵连什么」「哪些行为是被测试锁死的」。
+
+结果是每一次新改动都在赌：要么过度重构破坏已被测试锁定的行为，要么不敢动因而留下重复实现。
+
+## 目标
+
+1. 建立一份**可被检索、可被更新、有代码证据**的架构知识库，落在仓库内的 Markdown 文件中。
+2. 让后续任何重构提议都能**引用具体文件路径与行号**，而不是凭印象。
+3. 把「Main Agent 只做调度与编排，不亲自干活」写成**基线约束**，而不是口头约定。
+
+## 非目标
+
+- 不修改任何业务代码逻辑（本次只读调查 + 写文档）。
+- 不引入新依赖、不重构架构、不做性能优化。
+- 不重训模型、不跑长训练。
+
+## 当前状态核实
+
+已核实（verified，依据本次仓库读取）：
+
+- 仓库根：`/home/kipley/Documents/code/learning/game_rendering`，Git 分支 `main`，工作区有未提交的
+  `.agent/telemetry*` 与 `.pi/governance` 升级改动。
+- 四层目录均已存在且非空：`core/`（cards/evaluator/strength/dealing/rules）、`agents/`（base/dqn/robot）、
+  `ui/`（app/clock/render/theme）、`scripts/`（env/train/evaluate）。
+- 根目录仍有扁平脚本 `draw_me_vs_DQN_Plus.py`（README 称 6 行入口）、`algorithm.py`、`const.py`。
+- `docs/` 已有 `BASELINE-REPORT.md`、`FINAL-REPORT.md`、`PRD.md`、`PROJECT-PLAN.md`。
+- `tests/` 已有 `test_purity.py`（分层纯度守护）等 9 个测试文件；`README.md` 明确记录
+  「`core/` 不 import pygame / numpy / scipy / torch」由 `tests/test_purity.py` 守护。
+- `.github/workflows/ci.yml` 存在（ruff + pytest）。
+- 资源目录 `src/` 有 207 个受版本控制的文件（美术/字体/BGM），与 Python 逻辑分离。
+- `management/legacy/` 保存着上一轮治理（Project r1–r5、Phase 0–7 任务）的历史视图，可作背景参考，
+  但其内容是旧账本产物，不是当前事实来源。
+
+未核实（unverified，交由 reader 子 Agent 实测）：
+
+- 各模块之间的**实际调用关系**是否与 README 图示一致。
+- `core/strength.py` 的 C(52,3)=22100 穷举表是否仍在位、是否仍在生成期而非 import 期构建。
+- `ui/app.py` 的事件循环是否真正做到零阻塞、是否已无 `time.sleep`。
+- `agents/dqn.py` 的 `from_checkpoint` 是否按 checkpoint 实际维度构建网络。
+- `tests/` 覆盖与实际缺陷的对应关系（哪些缺陷已修、哪些仍开放）。
+
+## 约束
+
+- **Main Agent 不亲自做实现工作**。本基线的 Main Agent 职责是：提出目标与验收标准、拆分任务、
+  派发 reader 子 Agent、审阅子 Agent 交付、维护基线与知识库文档本身。
+  子 Agent 负责实际的代码阅读、证据收集与文档撰写。
+- 委派深度固定为 1 层（Main → Child），Child 不得再委派。
+- 所有子 Agent 使用 `vllm-local/Qwen3.8-27B`（策略档 `qwen38`）。
+- reader 角色为只读：`read/grep/find/ls`，不得写代码、不得提交。
+- 产出文档写入仓库 `docs/ARCHITECTURE.md`，所有结论必须带文件路径与行号。
+- 不改动 `src/`（美术资源）、不改动 `core/`、`agents/`、`ui/`、`scripts/`、`tests/` 的业务逻辑。
+
+## 可验证验收标准
+
+1. `docs/ARCHITECTURE.md` 存在，内容含：分层与依赖方向、模块职责表、关键调用链、数据流、
+   被测试锁定的行为清单、重构风险点、遗留疑点。
+2. 文档中每条「事实性结论」都带 `文件路径:行号` 形式的证据引用。
+3. `docs/ARCHITECTURE.md` 中不存在与 `tests/` 或 README 冲突的陈述（由 reviewer 逐条核对）。
+4. 本次调查**未修改任何业务代码**：`git diff --stat` 除 `docs/ARCHITECTURE.md` 与治理目录外为空。
+5. 三个 reader 子 Agent 的 Run 全部进入终态（SUCCEEDED），且交付物带证据。
+
+## 风险与变更点
+
+| 风险 | 影响 | 应对 |
+|---|---|---|
+| reader 可能把 README 的自述当成事实 | 知识库失真，重构依据失效 | 要求所有结论必须回指代码行；无法确认标 UNKNOWN |
+| 文档与代码脱节 | 后续重构引用过期依据 | 文档标注生成时的 commit；后续改动时同步更新 |
+| 3 个 reader 重复调查同一模块 | 浪费预算 | Main Agent 按模块边界切分任务，互斥 |
+| 子 Agent 预算被 org 规则卡住 | 委派失败 | Task 预算固定在 2,000,000 以下，delegation 单笔 ≤ 30,000 |
+

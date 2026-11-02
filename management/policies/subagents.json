@@ -1,0 +1,67 @@
+{
+  "version": 3,
+  "models": {
+    "qwen38": "vllm-local/Qwen3.8-27B"
+  },
+  "maxConcurrent": 5,
+  "maxRunsPerTask": 20,
+  "agents": {
+    "reader": {
+      "description": "只读代码调查：定位文件、检索符号、分析调用链",
+      "useFor": "代码阅读、文件定位、代码搜索、调用链分析、架构调查、Bug 原因分析",
+      "enabled": true,
+      "modelProfiles": [
+        "qwen38"
+      ],
+      "defaultModelProfile": "qwen38",
+      "tools": [
+        "read",
+        "grep",
+        "find",
+        "ls"
+      ],
+      "maxConcurrent": 5,
+      "maxAllocationTokens": 30000,
+      "timeoutMs": 2700000
+    },
+    "worker": {
+      "description": "范围明确的实现工作，在独立工作区完成改动与测试",
+      "useFor": "已界定边界的编码、重构、补测试",
+      "enabled": true,
+      "modelProfiles": [
+        "qwen38"
+      ],
+      "defaultModelProfile": "qwen38",
+      "tools": [
+        "read",
+        "grep",
+        "find",
+        "ls",
+        "edit",
+        "write",
+        "bash"
+      ],
+      "maxConcurrent": 2,
+      "maxAllocationTokens": 120000,
+      "timeoutMs": 1800000
+    },
+    "reviewer": {
+      "description": "独立审核与验证，不替 worker 补写",
+      "useFor": "核对产物与证据、复核交付、指出返工点",
+      "enabled": true,
+      "modelProfiles": [
+        "qwen38"
+      ],
+      "defaultModelProfile": "qwen38",
+      "tools": [
+        "read",
+        "grep",
+        "find",
+        "ls"
+      ],
+      "maxConcurrent": 1,
+      "maxAllocationTokens": 60000,
+      "timeoutMs": 1800000
+    }
+  }
+}

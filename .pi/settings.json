@@ -1,0 +1,40 @@
+{
+  "subagents": {
+    "defaultModel": "vllm-local/Qwen3.8-27B",
+    "agentOverrides": {
+      "reader": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls"
+        ],
+        "description": "只读代码调查：定位文件、检索符号、分析调用链",
+        "disabled": false
+      },
+      "worker": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "edit",
+          "write",
+          "bash"
+        ],
+        "description": "范围明确的实现工作，在独立工作区完成改动与测试",
+        "disabled": false
+      },
+      "reviewer": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls"
+        ],
+        "description": "独立审核与验证，不替 worker 补写",
+        "disabled": false
+      }
+    }
+  }
+}
