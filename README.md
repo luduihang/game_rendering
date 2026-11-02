@@ -24,30 +24,30 @@ pip install -e ".[dev]"
 ## 架构
 
 ```
-                    ┌──────────────────────────────┐
-   入口             │  draw_me_vs_DQN_Plus.py (6 行)│
-                    └───────────────┬──────────────┘
-                                    │
-                    ┌───────────────▼──────────────┐
-   表现层           │  ui/                          │
-                    │   app.py    事件驱动主循环     │
-                    │   clock.py  可注入节奏器       │
-                    │   render.py 薄渲染（无规则）   │
-                    │   theme.py  布局 / 资源路径    │
-                    └───────┬───────────────┬──────┘
-                            │               │
-            ┌───────────────▼──────┐  ┌─────▼──────────────┐
-   领域层   │  core/                │  │  agents/            │
-            │   cards.py    牌      │  │   base.py  BaseAgent│
-            │   evaluator.py 牌型   │  │   dqn.py   DQN      │
-            │   strength.py 精确表  │  │   robot.py Robot    │
-            │   dealing.py  发牌    │  └─────┬──────────────┘
-            │   rules.py    状态机   │        │
-            └───────────┬───────────┘        │
-                        │                    │
-            ┌───────────▼────────────────────▼──────────┐
-   入口层   │  scripts/  env.py · train.py · evaluate.py │
-            └────────────────────────────────────────────┘
+                      ┌────────────────────────────────────┐  ┌────────────────────────────────────┐
+    入口层            │  draw_me_vs_DQN_Plus.py            │  │  scripts/                          │
+                      │  薄入口（14 行）                   │  │  env.py · train.py ·               │
+                      └─────────────────┬──────────────────┘  │  evaluate.py                       │
+                                                              └─────────────────┬──────────────────┘
+                                        │                                       │
+                      ┌─────────────────▼──────────────────┐                    │
+    表现层            │  ui/                               │                    │
+                      │  app.py    事件驱动主循环          │                    │
+                      │  clock.py  可注入节奏器            │                    │
+                      │  render.py 薄渲染（无规则）        │                    │
+                      │  theme.py  布局 / 资源路径         │                    │
+                      └───────┬────────────────────────┬───┘                    │
+                              │                        │                        │
+                              ┤────────────────────────┼────────────────────────┤
+                              │                        │
+              ┌───────────────▼────────────────┐  ┌────▼───────────────────────────┐
+    领域层    │  core/                         │  │  agents/                       │
+              │  cards.py    牌                │  │  base.py  BaseAgent            │
+              │  evaluator.py 牌型             │  │  dqn.py   DQN                  │
+              │  strength.py 精确表            │  │  robot.py Robot                │
+              │  dealing.py  发牌              │  ┘
+              │  rules.py    状态机            │
+              └────────────────────────────────┘
 
   依赖方向严格单向：ui → core/agents，scripts → core/agents。
   core/ 与 agents/ 不依赖 pygame，可无头运行（CI 用 SDL dummy 驱动验证）。
@@ -60,7 +60,8 @@ pip install -e ".[dev]"
 | `core/` 不 import pygame / numpy / scipy / torch | `tests/test_purity.py` |
 | `agents/`、`scripts/` 不 import pygame | `tests/test_agents.py`、`tests/test_scripts.py` |
 | 无模块在 import 期加载权重 | `tests/test_agents.py::TestLayeringAndImportPurity` |
-| `ui/`、`scripts/` 无 `time.sleep` | `tests/test_ui.py::TestTicker::test_no_sleep_in_source` |
+| `ui/` 无 `time.sleep` | `tests/test_ui.py::TestTicker::test_no_sleep_in_source` |
+| `scripts/` 无 `time.sleep` | `tests/baseline/repro_d7_timing.py`（CI 缺陷回归步骤，非 pytest） |
 | UI 不自行记账（渲染值 = core 快照） | `tests/test_ui.py::TestUICoreConsistency` |
 
 ## 目录
@@ -72,7 +73,7 @@ ui/        app·clock·render·theme                    渲染与事件循环
 scripts/   env·train·evaluate                        训练/评估入口
 mymath/    func_const·probability_func               概率密度工具（Robot 依赖）
 tests/     单元测试 + baseline 缺陷回归脚本
-src/       美术与音频资源
+src/       美术与音频资源（button/card_pic/character/Font/item_pic/BGM；另有 card_pic备用/、login/ 等未被引用的残留目录）
 ```
 
 ## 四个入口

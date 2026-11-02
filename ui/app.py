@@ -25,6 +25,32 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_CHECKPOINT = REPO / "dqn_model_1.pth"
 
 
+def key_to_action_map() -> dict[int, Action]:
+    """显式键码 → Action 映射表。
+
+    不用「键码差值」（如 ``Action(key - pygame.K_1)``）：差值映射在小键盘 /
+    非标准键盘布局下会错位。逐键显式对应，且覆盖全部 Action 成员（见
+    ``core.rules.Action``）。pygame 延迟导入，保持模块 import 期无 pygame 依赖。
+    """
+    import pygame
+
+    return {
+        pygame.K_1: Action.BET_10,
+        pygame.K_2: Action.BET_20,
+        pygame.K_3: Action.BET_50,
+        pygame.K_4: Action.BET_100,
+        pygame.K_f: Action.FOLD,
+        pygame.K_c: Action.COMPARE,
+    }
+
+
+def check_assets() -> list[str]:
+    """启动资源自检：用 ``ui.theme.missing_assets()`` 精确列出缺失资源名。"""
+    from ui.theme import missing_assets
+
+    return missing_assets()
+
+
 class Controller:
     """对局控制器：把「谁的回合 / 何时行动」表达为截止时间，而非阻塞等待。"""
 
@@ -51,6 +77,7 @@ class Controller:
         self.first_player = human_player
         self.ai_deadline: float | None = None
         self.human_deadline: float | None = None
+        self.last_now: float = 0.0
         self.new_round()
 
     # ---------- 初始化 ----------
@@ -138,8 +165,6 @@ class Controller:
             self._schedule(self.last_now)
         return ok
 
-    last_now: float = 0.0
-
     def set_now(self, now: float) -> None:
         self.last_now = now
 
@@ -202,18 +227,15 @@ class App:
     def _on_key(self, key: int) -> None:
         import pygame
 
+        key_map = key_to_action_map()
         if key == pygame.K_ESCAPE:
             self.running = False
         elif key == pygame.K_r:
             self.controller.new_round(self.ticker.now())
         elif self.controller.room.finish:
             return
-        elif key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
-            self.controller.human_action(int(Action(key - pygame.K_1)))
-        elif key == pygame.K_f:
-            self.controller.human_action(int(Action.FOLD))
-        elif key == pygame.K_c:
-            self.controller.human_action(int(Action.COMPARE))
+        elif key in key_map:
+            self.controller.human_action(int(key_map[key]))
 
     def _on_click(self, pos) -> None:
         if self.controller.room.finish:
@@ -266,9 +288,9 @@ def main(argv=None) -> int:
 
     controller = Controller(seed=None)
     renderer = Renderer()
-    missing = [name for name in ("background", "card_dir") if not Path(const.ROOT / "src").exists()]
+    missing = check_assets()
     if missing:
-        print(f"[提示] 资源目录缺失: {missing}（将使用占位绘制）")
+        print(f"[提示] 缺失资源: {', '.join(missing)}（将使用占位绘制）")
 
     app = App(controller, renderer=renderer, ticker=Ticker(TickPolicy.REAL))
     try:

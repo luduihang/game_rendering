@@ -107,3 +107,22 @@ git checkout <删除提交的父提交> -- 备份/
 - 新增 `.gitignore`、`pyproject.toml`；35 个产物移出 git 索引
 - 移除 `from sympy import false` 误依赖；`np.trapz` → `np.trapezoid`
 - 重写 `README.md`
+
+## [0.2.1] — S/M 级重构清理与 README 修正（零行为风险）
+
+### 代码清理
+- `ui/app.py`：键码差值映射（`Action(key - pygame.K_1)`）改为显式映射表 `key_to_action_map()`（K_1..K_4 → BET_10/20/50/100，K_f → FOLD，K_c → COMPARE），避免小键盘/非标准布局下错位
+- `ui/app.py`：启动资源自检改用 `ui.theme.missing_assets()`（新增 `check_assets()`），缺失时打印具体缺失资源名
+- `ui/app.py`：`Controller.last_now` 由类级属性移入 `__init__`
+- `ui/theme.py`：`button_rects` 返回注解由 `dict[int, "object"]` 改为 `dict[int, pygame.Rect]`
+- `core/__init__.py`：`__all__` 补齐 `strength_ordinal`、`strongest_hand` 与 dealing 符号（`new_deck` / `deal_uniform` / `deal_strength_biased` / `verify_uniformity` / `EmptyDeckError`）；惰性建表不变（import core 不触发 22100 手建表）
+
+### 文档与配置
+- `README.md`：入口行数 (6 行) → (14 行)；架构图改为入口层置顶（`draw_me_vs_DQN_Plus.py` 与 `scripts/` 并排），箭头由入口向下指向 ui/core/agents，与实际 import 方向一致；`time.sleep` 守护声明拆为两行（`ui/` 由 pytest 守护、`scripts/` 由 `tests/baseline/repro_d7_timing.py` 守护，非 pytest）；`src/` 目录说明同步实际内容（注明 `card_pic备用/`、`login/` 等未被引用的残留目录）
+- `pyproject.toml`：ruff `extend-exclude` 移除已不存在的 `备份/` 目录
+
+### 测试
+- 新增 `tests/test_ui.py::TestKeyMapping::test_key_map_covers_all_actions_with_unique_keys`（映射表与 Action 一一对应）
+- 新增 `tests/test_ui.py::TestEntryAndAssets::test_startup_asset_check_reports_specific_missing`（缺失资源场景报出具体资源名）
+- 新增 `tests/test_ui.py::TestOriginalTextures::test_button_rects_return_pygame_rects`（运行时类型为 pygame.Rect）
+- 新增 `tests/test_purity.py::test_import_core_does_not_build_strength_table`（全新解释器验证惰性建表）

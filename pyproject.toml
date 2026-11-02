@@ -39,7 +39,7 @@ addopts = "-q --strict-markers"
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-extend-exclude = ["备份", "__pycache__", ".venv", "src"]
+extend-exclude = ["__pycache__", ".venv", "src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]

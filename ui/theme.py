@@ -12,8 +12,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import const
+
+if TYPE_CHECKING:  # 仅供注解；运行时仍保持方法内延迟 import pygame
+    import pygame
 
 # ---- 原始贴图映射 ----
 # 动作索引（与 core.rules.Action 一致）→ 按钮贴图文件名
@@ -127,7 +131,7 @@ class Layout:
 
         return pygame.Rect(self.own_avatar if who == "human" else self.opponent_avatar)
 
-    def button_rects(self, legal_actions) -> dict[int, "object"]:
+    def button_rects(self, legal_actions) -> dict[int, pygame.Rect]:
         """按合法动作动态生成按钮矩形（运行时创建 pygame.Rect）。"""
         import pygame
 
