@@ -104,6 +104,21 @@
    "match": "exact"
   },
   {
+   "doc_line": 72,
+   "file": "README.md",
+   "ref": "README.md:44-48",
+   "old_line": "│   dealing.py  发牌    │  └─────┬──────────────┘",
+   "new_line": "┌─────────────────▼──────────────────┐                    │",
+   "old_total": 116,
+   "new_total": 131,
+   "old_line_full": "│   dealing.py  发牌    │  └─────┬──────────────┘",
+   "reason": "not-found",
+   "new_file": "README.md",
+   "new_ref": "39,59",
+   "note": "T4 重排架构图：入口层上移至 39 行，dealing.py 行现为 59",
+   "match": "manual-verified"
+  },
+  {
    "doc_line": 373,
    "file": "README.md",
    "ref": "README.md:28",
@@ -116,6 +131,21 @@
    "new_file": "README.md",
    "new_ref": "39",
    "note": "T4 重排架构图：入口层行现为 39",
+   "match": "manual-verified"
+  },
+  {
+   "doc_line": 374,
+   "file": "README.md",
+   "ref": "README.md:44-48",
+   "old_line": "│   dealing.py  发牌    │  └─────┬──────────────┘",
+   "new_line": "┌─────────────────▼──────────────────┐                    │",
+   "old_total": 116,
+   "new_total": 131,
+   "old_line_full": "│   dealing.py  发牌    │  └─────┬──────────────┘",
+   "reason": "not-found",
+   "new_file": "README.md",
+   "new_ref": "39,59",
+   "note": "T4 重排架构图：入口层上移至 39 行，dealing.py 行现为 59",
    "match": "manual-verified"
   },
   {
@@ -169,6 +199,21 @@
    "new_total": 131,
    "old_line_full": "依赖方向严格单向：ui → core/agents，scripts → core/agents。",
    "match": "exact"
+  },
+  {
+   "doc_line": 416,
+   "file": "README.md",
+   "ref": "README.md:44-48",
+   "old_line": "│   dealing.py  发牌    │  └─────┬──────────────┘",
+   "new_line": "┌─────────────────▼──────────────────┐                    │",
+   "old_total": 116,
+   "new_total": 131,
+   "old_line_full": "│   dealing.py  发牌    │  └─────┬──────────────┘",
+   "reason": "not-found",
+   "new_file": "README.md",
+   "new_ref": "39,59",
+   "note": "T4 重排架构图：入口层上移至 39 行，dealing.py 行现为 59",
+   "match": "manual-verified"
   },
   {
    "doc_line": 417,
@@ -377,6 +422,21 @@
    "new_file": "scripts/evaluate.py",
    "new_ref": "23",
    "note": "T2 改写 import：ACTION_NAMES 改为从 scripts.env 导入",
+   "match": "manual-verified"
+  },
+  {
+   "doc_line": 153,
+   "file": "scripts/evaluate.py",
+   "ref": "evaluate.py:62-69",
+   "old_line": "action_names = {",
+   "new_line": "每轮交换座位以消除先手偏置；summary 增加 ``opponent_win_rate`` 与对手动作分布）。",
+   "old_total": 107,
+   "new_total": 160,
+   "old_line_full": "action_names = {",
+   "reason": "not-found",
+   "new_file": "scripts/evaluate.py",
+   "new_ref": "32",
+   "note": "T2 改写：动作名分布改用 scripts.env.ACTION_NAMES",
    "match": "manual-verified"
   },
   {
@@ -912,6 +972,21 @@
    "match": "exact"
   },
   {
+   "doc_line": 114,
+   "file": "ui/app.py",
+   "ref": "app.py:57-62",
+   "old_line": "def _load_agent(self, checkpoint) -> DQNAgent:",
+   "new_line": "import pygame",
+   "old_total": 282,
+   "new_total": 347,
+   "old_line_full": "def _load_agent(self, checkpoint) -> DQNAgent:",
+   "reason": "not-found",
+   "new_file": "ui/app.py",
+   "new_ref": "108-124",
+   "note": "T3 改写 _load_agent：新增 trained 返回值与三行告警",
+   "match": "manual-verified"
+  },
+  {
    "doc_line": 116,
    "file": "ui/app.py",
    "ref": "app.py:247-251",
@@ -1288,6 +1363,21 @@
    "anchor": "human_action"
   },
   {
+   "doc_line": 381,
+   "file": "ui/app.py",
+   "ref": "ui/app.py:269-271",
+   "old_line": "missing = [name for name in (\"background\", \"card_dir\") if not Path(const.ROOT / \"src\").exi",
+   "new_line": "",
+   "old_total": 282,
+   "new_total": 347,
+   "old_line_full": "missing = [name for name in (\"background\", \"card_dir\") if not Path(const.ROOT / \"src\").exists()]",
+   "reason": "not-found",
+   "new_file": "ui/app.py",
+   "new_ref": "334",
+   "note": "T4 把资源自检改为 check_assets()，调用点现为 334",
+   "match": "manual-verified"
+  },
+  {
    "doc_line": 383,
    "file": "ui/app.py",
    "ref": "ui/app.py:25",
@@ -1402,72 +1492,5 @@
    "match": "manual-verified"
   }
  ],
- "unresolved": [
-  {
-   "doc_line": 72,
-   "file": "README.md",
-   "ref": "README.md:44-48",
-   "old_line": "│   dealing.py  发牌    │  └─────┬──────────────┘",
-   "new_line": "┌─────────────────▼──────────────────┐                    │",
-   "old_total": 116,
-   "new_total": 131,
-   "old_line_full": "│   dealing.py  发牌    │  └─────┬──────────────┘",
-   "reason": "not-found"
-  },
-  {
-   "doc_line": 114,
-   "file": "ui/app.py",
-   "ref": "app.py:57-62",
-   "old_line": "def _load_agent(self, checkpoint) -> DQNAgent:",
-   "new_line": "import pygame",
-   "old_total": 282,
-   "new_total": 347,
-   "old_line_full": "def _load_agent(self, checkpoint) -> DQNAgent:",
-   "reason": "not-found"
-  },
-  {
-   "doc_line": 153,
-   "file": "scripts/evaluate.py",
-   "ref": "evaluate.py:62-69",
-   "old_line": "action_names = {",
-   "new_line": "每轮交换座位以消除先手偏置；summary 增加 ``opponent_win_rate`` 与对手动作分布）。",
-   "old_total": 107,
-   "new_total": 160,
-   "old_line_full": "action_names = {",
-   "reason": "not-found"
-  },
-  {
-   "doc_line": 374,
-   "file": "README.md",
-   "ref": "README.md:44-48",
-   "old_line": "│   dealing.py  发牌    │  └─────┬──────────────┘",
-   "new_line": "┌─────────────────▼──────────────────┐                    │",
-   "old_total": 116,
-   "new_total": 131,
-   "old_line_full": "│   dealing.py  发牌    │  └─────┬──────────────┘",
-   "reason": "not-found"
-  },
-  {
-   "doc_line": 381,
-   "file": "ui/app.py",
-   "ref": "ui/app.py:269-271",
-   "old_line": "missing = [name for name in (\"background\", \"card_dir\") if not Path(const.ROOT / \"src\").exi",
-   "new_line": "",
-   "old_total": 282,
-   "new_total": 347,
-   "old_line_full": "missing = [name for name in (\"background\", \"card_dir\") if not Path(const.ROOT / \"src\").exists()]",
-   "reason": "not-found"
-  },
-  {
-   "doc_line": 416,
-   "file": "README.md",
-   "ref": "README.md:44-48",
-   "old_line": "│   dealing.py  发牌    │  └─────┬──────────────┘",
-   "new_line": "┌─────────────────▼──────────────────┐                    │",
-   "old_total": 116,
-   "new_total": 131,
-   "old_line_full": "│   dealing.py  发牌    │  └─────┬──────────────┘",
-   "reason": "not-found"
-  }
- ]
+ "unresolved": []
 }
