@@ -75,7 +75,7 @@
 
 | 路径 | 行数 | 职责 | 关键公开符号 | file:line |
 |---|---|---|---|---|
-| `core/__init__.py` | 31 | core 包公开 API 重导出；`__all__` 白名单 | `__all__`（不含 `strength_ordinal`、`strongest_hand` 及 dealing 全部符号，只能经模块直接导入） | __init__.py:11-14（重导出）、16-30（白名单） |
+| `core/__init__.py` | 31 | core 包公开 API 重导出；`__all__` 白名单 | `__all__`（不含 `strength_ordinal`、`strongest_hand` 及 dealing 全部符号，只能经模块直接导入） | __init__.py:11-14（重导出）、16-31（白名单） |
 | `core/cards.py` | 74 | 牌与牌堆数据模型（frozen dataclass） | `Suit`(IntEnum)、`Card`、`full_deck()`、`Card.from_legacy/to_legacy`、`hand_from_legacy/hand_to_legacy` | cards.py:13-17（Suit 域）、33-34（MIN/MAX_RANK）、37-46（Card 不变式）、55-61、64-66、69-74 |
 | `core/evaluator.py` | 89 | 三张牌牌型判定与比大小 | `HandType`、`HAND_TYPE_NAMES`、`HandRank`（frozen，`key()` 可排序比较键）、`evaluate()`、`compare()` | evaluator.py:18-24、27、30-45、53-83、86-89 |
 | `core/strength.py` | 58 | 穷举精确强度表（C(52,3)=22100，惰性建表 + 二分查询） | `beats_probability()`、`strength_ordinal()`、`strength_bin()`、`table_size()`、`strongest_hand()`、`BIN_THRESHOLDS` | strength.py:21、24-27（lru_cache 全量枚举）、34-37、48-54、57-58 |
@@ -98,7 +98,7 @@
 | `ui/theme.py` | 170 | 资源路径映射 + `Layout` 布局常量 | `Layout`、`asset_paths()`、`button_image_path/avatar_image_path/coin_image_path`、`missing_assets()` | theme.py:20-41、44-53、57-74、77-90、92-123 |
 | `ui/__init__.py` | 12 | 包导出：`__all__ = ["TickPolicy","Ticker","Layout","asset_paths"]`（App/Controller/Renderer 未重导出） | 重导自 ui.clock(9)、ui.theme(10) | ui/__init__.py:12 |
 
-补充说明（report-A Q1）：`strength_ordinal`、`strongest_hand` 及 dealing 全部符号**不在** core `__all__` 白名单中（__init__.py:16-30），跨模块使用需直接 import 子模块（如 ui/app.py:20-21 直接引 core.rules/core.strength、app.py:18-19 引 core.dealing/core.evaluator）。
+补充说明（report-A Q1）：`strength_ordinal`、`strongest_hand` 及 dealing 全部符号**不在** core `__all__` 白名单中（__init__.py:16-31），跨模块使用需直接 import 子模块（如 ui/app.py:20-21 直接引 core.rules/core.strength、app.py:18-19 引 core.dealing/core.evaluator）。
 
 ## 4. 关键调用链
 
@@ -193,7 +193,7 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 | tests/test_dealing.py | 牌堆不足抛 EmptyDeckError | test_dealing.py:50-52 |
 | tests/test_dealing.py | 400 手均匀样本强度分位均值 ∈(0.44,0.56)（基线 0.489） | test_dealing.py:56-59 |
 | tests/test_dealing.py | 最强档（>0.95）占比 <0.08（理论 5%，基线实测 0.013） | test_dealing.py:62-66 |
-| tests/test_dealing.py | 偏置路径（三抽一）均值须比均匀高 >0.15（基线 0.766 vs 0.489） | test_dealing.py:69-74 |
+| tests/test_dealing.py | 偏置路径（三抽一）均值须比均匀高 >0.15（基线 0.766 vs 0.489） | test_dealing.py:69-75 |
 | tests/test_dealing.py | 偏置路径每发 1 手丢弃 9 张不回堆 | test_dealing.py:78-83 |
 | tests/test_dealing.py | 默认均匀路径不触发 22100 手建表（lru_cache 命中为 0） | test_dealing.py:86-95 |
 | tests/test_dealing.py | 全牌堆 52 张唯一 | test_dealing.py:98-101 |
@@ -213,7 +213,7 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 | tests/test_ui.py | 按 R 重开新局 | test_ui.py:110-119 |
 | tests/test_ui.py | UI 不记账：view() 与 room.snapshot() 五字段（money/bets/all_bet/finish/winner）逐字段相等 | test_ui.py:124-134 |
 | tests/test_ui.py | min_bet 来自 core（BET_100 后 view["min_bet"]==100） | test_ui.py:137-140 |
-| tests/test_ui.py | 合法动作仅在人类回合非空 | test_ui.py:142-148 |
+| tests/test_ui.py | 人类回合合法动作非空（未断言 AI 回合为空） | test_ui.py:142-148 |
 | tests/test_ui.py | 性能：core 单步 <5ms（基线 1530.8ms） | test_ui.py:152-165（assert :165） |
 | tests/test_ui.py | 性能：UI 路由+控制单帧 <50ms | test_ui.py:167-173（assert :173） |
 | tests/test_ui.py | 入口薄化：draw_me_vs_DQN_Plus.py 无星号导入/sleep/load_state_dict，import 期无 pygame.init() | test_ui.py:177-183 |
@@ -228,6 +228,8 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 | tests/test_ui.py | 布局不重叠（手牌≤按钮 y、信息栏不侵入、暗牌不压底池、按钮不出界） | test_ui.py:282-293 |
 | tests/test_ui.py | 窗口 4:3 | test_ui.py:295-298 |
 | tests/test_ui.py | missing_assets()==[] | test_ui.py:300-303 |
+
+> 注：上行「人类回合合法动作非空」对应 test_ui.py:142-148（`test_legal_actions_gated_to_human_turn`），其实际断言范围仅为两项——`view["is_human_turn"] is True`（test_ui.py:147）与人类回合 `view["legal_actions"]` 非空（test_ui.py:148）；该测试**没有**断言 AI 回合合法动作为空（R2 审核发现，原措辞「仅在人类回合非空」偏强，已校准）。
 
 ### 6.4 tests/test_strength.py（精确强度表）
 
@@ -267,7 +269,7 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 | tests/test_agents.py | 与 epsilon=1.0 随机策略动作分布 L1 距离 >0.5 | test_agents.py:65-84（assert :84） |
 | tests/test_agents.py | 契约：act 只返回合法动作（30 次×3 组） | test_agents.py:88-93 |
 | tests/test_agents.py | 空合法集抛 ValueError | test_agents.py:95-98 |
-| tests/test_agents.py | 同种子同序列 | test_agents.py:100-105 |
+| tests/test_agents.py | 同种子同序列 | test_agents.py:100-106 |
 | tests/test_agents.py | save/load 往返动作一致 | test_agents.py:108-114 |
 | tests/test_agents.py | replay 返回非负 loss 且 epsilon 按 decay 降至 0.5 | test_agents.py:116-125 |
 | tests/test_agents.py | Robot：act 合法、强牌 win_rate>弱牌、预设差异、robot.py 无星号导入（显式 import numpy）、强牌加注占比>弱牌（400 次统计） | test_agents.py:141-180 |
@@ -363,14 +365,15 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 - 默认路径是均匀发牌：`new_deck()` 洗牌（dealing.py:27-31，`rng` 可注入 dealing.py:30）+ `deal_uniform(deck, n=3)`（dealing.py:34-38）；模块 docstring 明确「默认 `deal_uniform`…`deal_strength_biased` 默认不启用，仅供复现历史实验（契约 D-R1）」（dealing.py:3-5）。
 - **任务书/历史文档所用的 `draw_strength_biased()` 开关在代码中不存在**：全仓 `.py` grep `draw_strength_biased` 零匹配（仅 legacy 管理文档 r4 plan 用过此名）；实际函数名是 **`deal_strength_biased`**（dealing.py:41-61，report-A Q5）。
 - 偏置路径行为：抽 `candidates`（默认 `DEFAULT_CANDIDATES=3`，dealing.py:20）组各 n 张候选（dealing.py:55-56），逐组 `beats_probability` 打分（dealing.py:57），保留最强一组（dealing.py:58-59），其余弃置不回堆（dealing.py:46 注释）；牌堆不足 `n*candidates` 抛 `EmptyDeckError`（dealing.py:50-52）。
-- 测试钉死：偏置均值比均匀高 >0.15（test_dealing.py:69-74）、每发 1 手丢弃 9 张不回堆（test_dealing.py:78-83）、均匀分布约束（test_dealing.py:56-66）。
+- 测试钉死：偏置均值比均匀高 >0.15（test_dealing.py:69-75）、每发 1 手丢弃 9 张不回堆（test_dealing.py:78-83）、均匀分布约束（test_dealing.py:56-66）。
 - **风险**：若把偏置路径设为默认，会打红 test_dealing.py:56-66 与 :86-95（偏置路径会触发 22100 手建表）；启用开关时调用 `deal_strength_biased`，不要按不存在的 `draw_strength_biased` 名找代码。
 
-### 7.6 README 与代码的 2 处不一致（详见第 8 节）
+### 7.6 README 与代码的不一致与 overclaim（详见第 8 节）
 
 - README.md:28「draw_me_vs_DQN_Plus.py (6 行)」实际为 14 行（report-C2b 第 4 条）。
 - README.md:44-48 架构图箭头方向错误（report-C2b 第 6 条）。
-- **风险**：照 README 图接线的开发者会搞反依赖方向；引用 README 行数/模块清单时以代码为准。
+- README.md:63「ui/、scripts/ 无 time.sleep」的守护声明超出测试范围：test_no_sleep_in_source 只扫 ui/（tests/test_ui.py:63-65），scripts/ 无 sleep 目前仅 grep 证实（R2 审核发现①，第 8 节第 3 条）。
+- **风险**：照 README 图接线的开发者会搞反依赖方向；引用 README 行数/模块清单时以代码为准；误以为 scripts/ 零 sleep 有测试守护，会使其混入 sleep 时没有任何测试变红——引用测试守护范围时以 tests/ 实际扫描范围为准。
 
 ### 7.7 其它已知小风险（report-C1 问题清单，均带 file:line）
 
@@ -381,7 +384,7 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 - view 恒含对手真手牌（ui/app.py:156），信息克制依赖 render 阶段（render.py:159-171、176-178），耦合偏隐式（见 5 节）。
 - `last_now` 为类级属性（未写于 `__init__`），`set_now`（ui/app.py:143-144）覆盖为实例属性，风格不统一（ui/app.py:141）。
 - `_on_click` 在 renderer=None 时 rects 为空 dict，鼠标输入失效（键盘仍可用）（ui/app.py:222）。
-- core `__all__` 白名单不含 `strength_ordinal`/`strongest_hand`/dealing 符号（core/__init__.py:16-30），依赖这些符号的代码只能直接 import 子模块。
+- core `__all__` 白名单不含 `strength_ordinal`/`strongest_hand`/dealing 符号（core/__init__.py:16-31），依赖这些符号的代码只能直接 import 子模块。
 
 ## 8. 遗留疑点与未核实项
 
@@ -407,10 +410,11 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 
 ### README 与代码的不一致
 
-已知 2 处（report-C2b 第 4、6 条）：
+已知 3 处（report-C2b 第 4、6 条 + R2 审核发现①）：
 
 1. **行数描述错误**：README.md:28 称「draw_me_vs_DQN_Plus.py (6 行)」，实际文件 14 行（9 行 docstring + 3 行可执行代码；draw_me_vs_DQN_Plus.py:11,14）。
 2. **架构图箭头方向与文字相反**：README.md:44-48 把箭头画成 `core/agents ▼→ scripts`，实际代码方向是 `scripts → core/agents`（scripts/env.py:13-17、train.py:23-24、evaluate.py:18-20），与 README.md:52 的文字描述自相矛盾。
+3. **「无 time.sleep」声明超出测试守护范围（overclaim）**：README.md:63 声称「ui/、scripts/ 无 `time.sleep`」并指认守护测试为 `tests/test_ui.py::TestTicker::test_no_sleep_in_source`，但该测试实际只扫描 `ui/`（`(REPO / "ui").glob("*.py")`，tests/test_ui.py:63-65），未覆盖 `scripts/`；`scripts/` 当前无 sleep 仅由 grep 核实（零命中），没有测试守护。即 README 声明范围（README.md:63：ui/ + scripts/）与测试实际守护范围（tests/test_ui.py:63-65：仅 ui/）不符。
 
 `mymath/robot2.py` 历史说明（确定结论，report-C2b 特别核对 B）：
 
@@ -419,4 +423,17 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 - management/legacy/project/r5/contract.json:17,26,39 的「保留 mymath/robot2.py」是 r5 计划期陈旧表述，最终按 r5/PLAN.md:33（T3.3 迁入 agents/）落地为「删除 + 迁移」。
 - README 本身并未声称保留 mymath/robot2.py（README.md:73 只列 func_const·probability_func），故此项 README 与代码一致。
 
-补充（report-C2b 问题清单中另有两条轻微项，非上述 2 处正式不一致）：pyproject.toml:42 ruff extend-exclude 含已不存在的「备份」目录（历史残留，无害）；mymath/ 的非代码文件「概率大小映射」未出现在 README.md:73 目录说明中（轻微遗漏）。
+补充（report-C2b 问题清单中另有两条轻微项，非上述 3 条正式条目）：pyproject.toml:42 ruff extend-exclude 含已不存在的「备份」目录（历史残留，无害）；mymath/ 的非代码文件「概率大小映射」未出现在 README.md:73 目录说明中（轻微遗漏）。
+
+### 行号校准说明
+
+两份审核报告（review-R1-line-sampling.md、review-R2-tests-readme.md）指出的 9 条行号边界偏差，已逐条打开源码复核（reviewer 抽样核验后本次再逐条核对），以 worktree HEAD（a6adf48）为准：
+
+- **已修正（3 条，涉及 5 处引用）**：
+  - core/__init__.py `__all__` 白名单 16-30 → **16-31**（右括号 `]` 在 :31，文件共 31 行；§3 表、§3 补充说明、§7.7 共 3 处）；
+  - tests/test_agents.py「同种子同序列」100-105 → **100-106**（assert 右括号在 :106；§6.6）；
+  - tests/test_dealing.py 偏置路径 69-74 → **69-75**（assert 右括号在 :75；§6.2、§7.5 共 2 处）。
+- **保持不变（6 条，复核后确认原引用正确、报告建议值有误）**：
+  - pyproject.toml 五个版本锁恰在 **:15-19**（:14 是 `dependencies = [` 行，pygame==2.6.1 在 :15、torch 在 :19）；
+  - rules.py `_compare` 恰为 **:160-170**，费用行 `cost = BET_OPTIONS[self.rest_option]` 恰在 **:162**（:173 `finish=True`、:175 `money += all_bet` 亦与原文一致）；
+  - tests/test_purity.py 三个测试函数边界 **15-16 / 19-25 / 28-52** 均正确（def 分别在 :15、:19、:28，文件共 63 行）。
