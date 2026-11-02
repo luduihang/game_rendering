@@ -1,97 +1,134 @@
-"""校验 ARCHITECTURE.md 中的 file:line 引用是否仍指向同一内容。输出写文件，不灌上下文。"""
-import re, sys, pathlib, json
+"""校验 ARCHITECTURE.md 中的 file:line 引用是否越界或文件缺失。
+
+用法：
+    ARCH_REF_REPO=<repo 路径> python check_refs.py
+
+输出写文件到 /tmp/audit/，只把摘要打印到 stdout（避免灌满子 Agent 上下文）。
+"""
+
+import json
+import os
+import pathlib
+import re
 from collections import defaultdict
 
-import os
-REPO = pathlib.Path(os.environ.get("ARCH_REF_REPO", "/home/kipley/Documents/code/learning/game_rendering"))
+REPO = pathlib.Path(
+    os.environ.get("ARCH_REF_REPO", "/home/kipley/Documents/code/learning/game_rendering")
+)
 DOC = REPO / "docs/ARCHITECTURE.md"
 OUT = pathlib.Path("/tmp/audit/stale_refs.json")
 OUT_MD = pathlib.Path("/tmp/audit/stale_refs.md")
 
-text = DOC.read_text(encoding="utf-8")
-lines = text.splitlines()
-
-# 匹配 file.ext:123 或 file.ext:123-456
-pat = re.compile(r'([A-Za-z0-9_./-]+\.(?:py|md|toml|json|yml|yaml|txt)):(\d+)(?:-(\d+))?')
-refs = []
-for i, ln in enumerate(lines, 1):
-    for m in pat.finditer(ln):
-        f, a, b = m.group(1), int(m.group(2)), m.group(3)
-        refs.append((i, f, a, int(b) if b else a, m.group(0)))
-
-# 建立 basename -> 候选路径索引（处理文档中的裸文件名引用，如 rules.py:31）
-from collections import defaultdict as _dd
-_INDEX = _dd(list)
-for _p in REPO.rglob("*"):
-    try:
-        _rel = _p.relative_to(REPO)
-    except ValueError:
-        continue
-    _r = str(_rel)
-    # 只排除 REPO 内部的 .git/.pi/management 与隐藏目录；REPO 本身可能是 worktree
-    if _p.is_file() and not _r.startswith((".git", ".pi", "management")) and not _r.startswith("."):
-        _INDEX[_p.name].append(_p)
+REF_PATTERN = re.compile(
+    r"([A-Za-z0-9_./-]+\.(?:py|md|toml|json|yml|yaml|txt)):(\d+)(?:-(\d+))?"
+)
 
 
-def resolve(f):
-    f2 = f.lstrip("./")
-    if "/" in f2:
-        c = REPO / f2
-        if c.exists():
-            return c
-        for c in _INDEX.get(pathlib.Path(f2).name, []):
-            if str(c).endswith(f2):
-                return c
+def build_index(root: pathlib.Path) -> dict:
+    """建立 basename -> 候选路径索引（处理文档中的裸文件名引用，如 rules.py:31）。"""
+    index: dict = defaultdict(list)
+    for path in root.rglob("*"):
+        try:
+            rel = str(path.relative_to(root))
+        except ValueError:
+            continue
+        # 只排除 REPO 内部的隐藏目录与治理目录；REPO 本身可能是 worktree
+        if path.is_file() and not rel.startswith((".", "management")):
+            index[path.name].append(path)
+    return index
+
+
+INDEX = build_index(REPO)
+
+
+def resolve(ref: str):
+    """把引用里的文件名解析为仓库内的实际路径。"""
+    name = ref.lstrip("./")
+    if "/" in name:
+        direct = REPO / name
+        if direct.exists():
+            return direct
+        for candidate in INDEX.get(pathlib.Path(name).name, []):
+            if str(candidate).endswith(name):
+                return candidate
         return None
-    cands = _INDEX.get(f2, [])
-    if not cands:
+    candidates = INDEX.get(name, [])
+    if not candidates:
         return None
-    if len(cands) == 1:
-        return cands[0]
-    # 多个同名候选：取 .py 优先且不在 management/docs 下的那个
-    py = [c for c in cands if c.suffix == ".py"]
-    if len(py) == 1:
-        return py[0]
-    return cands[0]
+    if len(candidates) == 1:
+        return candidates[0]
+    python_files = [c for c in candidates if c.suffix == ".py"]
+    if len(python_files) == 1:
+        return python_files[0]
+    return candidates[0]
 
 
-missing_file = defaultdict(list)
-out_of_range = defaultdict(list)
-ok = 0
-for dline, f, a, b, raw in refs:
-    p = resolve(f)
-    if p is None:
-        missing_file[f].append((dline, raw))
-        continue
-    n = len(p.read_text(encoding="utf-8", errors="replace").splitlines())
-    if a < 1 or b > n:
-        out_of_range[f].append({"doc_line": dline, "ref": raw, "file_lines": n})
-    else:
-        ok += 1
+def main() -> None:
+    lines = DOC.read_text(encoding="utf-8").splitlines()
+    refs = []
+    for line_no, line in enumerate(lines, 1):
+        for match in REF_PATTERN.finditer(line):
+            start = int(match.group(2))
+            end = int(match.group(3)) if match.group(3) else start
+            refs.append((line_no, match.group(1), start, end, match.group(0)))
 
-result = {
-    "total_refs": len(refs),
-    "in_range": ok,
-    "missing_file": {k: v for k, v in missing_file.items()},
-    "out_of_range": out_of_range,
-}
-OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    missing: dict = defaultdict(list)
+    out_of_range: dict = defaultdict(list)
+    in_range = 0
+    for doc_line, name, start, end, raw in refs:
+        path = resolve(name)
+        if path is None:
+            missing[name].append((doc_line, raw))
+            continue
+        total = len(path.read_text(encoding="utf-8", errors="replace").splitlines())
+        if start < 1 or end > total:
+            out_of_range[str(path.relative_to(REPO))].append(
+                {"doc_line": doc_line, "ref": raw, "file_lines": total}
+            )
+        else:
+            in_range += 1
 
-md = [f"# 失效引用清单（自动生成）", "", f"- 总引用数: **{len(refs)}**", f"- 行号在范围内: **{ok}**",
-      f"- 文件不存在: **{len(missing_file)}** 个文件 / {sum(len(v) for v in missing_file.values())} 处",
-      f"- 行号越界: **{len(out_of_range)}** 个文件 / {sum(len(v) for v in out_of_range.values())} 处", "",
-      "## 越界明细", ""]
-for f, items in sorted(out_of_range.items()):
-    md.append(f"### {f}（文件共 {items[0]['file_lines']} 行）")
-    md.append("| 文档行 | 引用 | 实际行数 |")
-    md.append("|---|---|---|")
-    for it in items:
-        md.append(f"| {it['doc_line']} | `{it['ref']}` | {it['file_lines']} |")
+    result = {
+        "total_refs": len(refs),
+        "in_range": in_range,
+        "missing_file": {k: v for k, v in missing.items()},
+        "out_of_range": {k: v for k, v in out_of_range.items()},
+    }
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    md = [
+        "# 失效引用清单（自动生成）",
+        "",
+        f"- 总引用数: **{len(refs)}**",
+        f"- 行号在范围内: **{in_range}**",
+        f"- 文件不存在: **{len(missing)}** 个文件 / {sum(len(v) for v in missing.values())} 处",
+        f"- 行号越界: **{len(out_of_range)}** 个文件 / {sum(len(v) for v in out_of_range.values())} 处",
+        "",
+        "## 越界明细",
+        "",
+    ]
+    for name, items in sorted(out_of_range.items()):
+        md.append(f"### {name}（文件共 {items[0]['file_lines']} 行）")
+        md.append("| 文档行 | 引用 | 实际行数 |")
+        md.append("|---|---|---|")
+        for item in items:
+            md.append(f"| {item['doc_line']} | `{item['ref']}` | {item['file_lines']} |")
+        md.append("")
+    md.append("## 文件不存在明细")
     md.append("")
-md.append("## 文件不存在明细")
-md.append("")
-for f, items in sorted(missing_file.items()):
-    md.append(f"- `{f}`: " + ", ".join(f"文档行{d} `{r}`" for d, r in items))
-OUT_MD.write_text("\n".join(md), encoding="utf-8")
-print(f"总引用 {len(refs)} | 范围内 {ok} | 越界 {sum(len(v) for v in out_of_range.values())} 处 | 文件缺失 {sum(len(v) for v in missing_file.values())} 处")
-print(f"已写入 {OUT_MD}")
+    for name, items in sorted(missing.items()):
+        detail = ", ".join(f"文档行{line} `{raw}`" for line, raw in items)
+        md.append(f"- `{name}`: {detail}")
+    OUT_MD.write_text("\n".join(md), encoding="utf-8")
+
+    print(
+        f"总引用 {len(refs)} | 范围内 {in_range} | "
+        f"越界 {sum(len(v) for v in out_of_range.values())} 处 | "
+        f"文件缺失 {sum(len(v) for v in missing.values())} 处"
+    )
+    print(f"已写入 {OUT_MD}")
+
+
+if __name__ == "__main__":
+    main()
