@@ -1,0 +1,41 @@
+# 验收检查日志 — Task architecture-knowledge-base
+生成时间: 2026-11-02T14:09:48
+工作区: /home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/architecture-knowledge-base
+HEAD: 5b3a49c7d16c69ce3233f4a3c1a3fee7edfa05a5
+
+== G1 文档存在且 8 章节 ==
+[PASS] G1.1 docs/ARCHITECTURE.md 存在（439 行）
+[PASS] G1.2 章节数 = 8（期望 8）  -- 1. 概览 | 2. 分层结构与依赖方向 | 3. 模块职责表 | 4. 关键调用链 | 5. 数据流与状态管理 | 6. 被测试锁定的行为清单 | 7. 重构风险点 | 8. 遗留疑点与未核实项
+[PASS] G1.3 含章节「1. 概览」
+[PASS] G1.3 含章节「2. 分层结构与依赖方向」
+[PASS] G1.3 含章节「3. 模块职责表」
+[PASS] G1.3 含章节「4. 关键调用链」
+[PASS] G1.3 含章节「5. 数据流与状态管理」
+[PASS] G1.3 含章节「6. 被测试锁定的行为清单」
+[PASS] G1.3 含章节「7. 重构风险点」
+[PASS] G1.3 含章节「8. 遗留疑点与未核实项」
+
+== G2 证据密度 ==
+[PASS] G2.1 file:line 引用总数 = 421
+[PASS] G2.2 覆盖文件数 = 63
+[PASS] G2.3 无行号 <= 0 的无效引用
+[PASS] G2.4 UNKNOWN 标注数 = 17
+
+== G3 零业务代码改动（相对基线 a6adf48）==
+[PASS] G3.1 改动文件仅限 docs/ management/ .pi/（实际 3 个）  -- []
+[PASS] G3.2 无业务代码改动
+[PASS] G3.3 入口脚本未改动
+
+== G4 引用真实性抽样（20 条）==
+[PASS] G4.1 抽样 20 条，行号落在文件范围内 = 20/20（未解析 0）  -- []
+
+== G5 README 不一致已记录 ==
+[PASS] G5.1 记录了「6 行 vs 14 行」
+[PASS] G5.2 记录了架构图箭头方向问题
+[PASS] G5.3 记录了 time.sleep 守护 overclaim
+
+== G6 被测试锁定清单完整性 ==
+[PASS] G6.1 tests/ 全部 8 个测试文件均被文档引用  -- []
+[PASS] G6.2 tests/baseline/ 全部 7 个脚本均被引用  -- []
+
+RESULT: ALL_PASS
