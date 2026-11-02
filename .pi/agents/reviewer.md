@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: 独立审核与验证，不替 worker 补写
-tools: read, grep, find, ls
+tools: read, grep, find, ls, bash
 thinking: minimal
 ---
 
