@@ -2,7 +2,8 @@
 import re, sys, pathlib, json
 from collections import defaultdict
 
-REPO = pathlib.Path("/home/kipley/Documents/code/learning/game_rendering")
+import os
+REPO = pathlib.Path(os.environ.get("ARCH_REF_REPO", "/home/kipley/Documents/code/learning/game_rendering"))
 DOC = REPO / "docs/ARCHITECTURE.md"
 OUT = pathlib.Path("/tmp/audit/stale_refs.json")
 OUT_MD = pathlib.Path("/tmp/audit/stale_refs.md")
@@ -18,19 +19,41 @@ for i, ln in enumerate(lines, 1):
         f, a, b = m.group(1), int(m.group(2)), m.group(3)
         refs.append((i, f, a, int(b) if b else a, m.group(0)))
 
-# 归一化路径
+# 建立 basename -> 候选路径索引（处理文档中的裸文件名引用，如 rules.py:31）
+from collections import defaultdict as _dd
+_INDEX = _dd(list)
+for _p in REPO.rglob("*"):
+    try:
+        _rel = _p.relative_to(REPO)
+    except ValueError:
+        continue
+    _r = str(_rel)
+    # 只排除 REPO 内部的 .git/.pi/management 与隐藏目录；REPO 本身可能是 worktree
+    if _p.is_file() and not _r.startswith((".git", ".pi", "management")) and not _r.startswith("."):
+        _INDEX[_p.name].append(_p)
+
+
 def resolve(f):
-    cands = [REPO / f, REPO / f.lstrip("./")]
-    # 文档里可能写 "ui/app.py" 或 "app.py"
-    for c in cands:
+    f2 = f.lstrip("./")
+    if "/" in f2:
+        c = REPO / f2
         if c.exists():
             return c
-    parts = f.split("/")
-    for n in range(len(parts) - 1, 0, -1):
-        c = REPO / "/".join(parts[-n:])
-        if c.exists():
-            return c
-    return None
+        for c in _INDEX.get(pathlib.Path(f2).name, []):
+            if str(c).endswith(f2):
+                return c
+        return None
+    cands = _INDEX.get(f2, [])
+    if not cands:
+        return None
+    if len(cands) == 1:
+        return cands[0]
+    # 多个同名候选：取 .py 优先且不在 management/docs 下的那个
+    py = [c for c in cands if c.suffix == ".py"]
+    if len(py) == 1:
+        return py[0]
+    return cands[0]
+
 
 missing_file = defaultdict(list)
 out_of_range = defaultdict(list)

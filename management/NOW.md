@@ -3,11 +3,11 @@
 项目 ID：0c68bf5a-2104-498a-9532-7a2f6f2384f3
 
 项目基线：r4 / ACTIVE；草稿：4。
-任务 8；已验收 4；执行中 1；阻塞 1；待决策 1。
+任务 10；已验收 6；执行中 0；阻塞 0；待决策 0。
 
 ## 活跃 Agent
 
-- reviewer：human-vs-machine / R-14cb6c25-afc2-4d9a-9e41-35986e27b782 / W-human-vs-machine；插件 running；注意 active_long_running
+暂无活跃 Agent。
 
 ## 费用
 
@@ -39,7 +39,10 @@
 - R-f3136e0a-a69b-4dd4-8add-51a06956a570: $0
 - R-f20e8e16-850c-4ad7-acfc-f3fe439648d5: $0
 - R-0054a175-50bb-42b0-8a33-4f1feaa76bb7: $0
-- R-14cb6c25-afc2-4d9a-9e41-35986e27b782: 未知
+- R-14cb6c25-afc2-4d9a-9e41-35986e27b782: $0
+- R-fbe3fe00-4658-4bb9-b3fc-d50d73c6e843: 未知
+- R-547c30ef-be71-469c-99f7-8d7721ef7cfe: $0
+- R-260d66ae-1c6b-4fca-9a15-5b358a0c2494: $0
 
 ## 风险与遗留
 
@@ -65,22 +68,29 @@
 - selfplay-train-100: evaluate 对局的贪心动作偏置到 bet_100（≈0.97），符合验收条款（未违反 natural_end_rate 与状态依赖要求），但若后续追求策略强度需再迭代训练配方。
 - selfplay-train-100: run/ 下仍有若干历史实验目录（base100/、k1/、k2a/、k2b/、robust_*/ 等），其中 hidden=(32,16) 的陈旧 checkpoint 已删除；仅 run/final/ 下保留 3 个 fc1=(128,4) 的当前产物（含 1 个 train.py:203 的对手同步临时文件 _sync_tmp_seed7.pth，非权威产物）。
 - selfplay-train-100: 治理插曲：前两轮 reviewer 均无 bash 工具（.pi/settings.json 的 agentOverrides 覆盖了 agent 定义文件的 tools 且修改未提交），已修复并提交 d67a0c0 + e4e44f6，第三轮 reviewer 实跑 16 项全部通过。
+- human-vs-machine: 权重被 .gitignore 排除（*.pth 在第 17 行、run/ 在第 23 行），不进版本库。部署需把 run/final/dqn_sp_ep100_seed7.pth 复制为仓库根的 dqn_model_1.pth，或用 --checkpoint / DQN_CHECKPOINT 指定路径。
+- human-vs-machine: docs/TRAINED-WEIGHTS-UI.md 中 3 处 ui/app.py 行号引用漂移 2~10 行（文档写 27/31/83-84，实际为 29/33/71-73），不影响理解。reviewer 判为可选修正项，未列为必须返工。
+- human-vs-machine: _load_agent 的 except 元组非穷举白名单：若 from_checkpoint 未来抛出该 4 类之外的异常类型仍会崩溃。reviewer 实测 torch 2.6 下 FileNotFoundError / ValueError / RuntimeError / PickleError 四类常见路径均已覆盖。
+- human-vs-machine: 本 Task 的证据日志提交 bfa9881 含 management/evidence/logs/ 路径，严格说在 Task 的 authority.paths（ui/tests/docs/README.md）之外，但与本仓既有的 test(evidence) 提交惯例一致且无功能改动，reviewer 判为可接受。
+- arch-ref-fix: 4 处内容级过期（行号正确但描述与当前代码不符），属 T5b（arch-doc-update）范围，已记录于 management/evidence/arch-ref/CONTENT-STALE.md 与 reviewer 报告：doc 153 的 core.rules.Action 逐行归属错（23 行实为 from scripts.env import）、doc 426 的 pyproject.toml extend-exclude 已无「备份」条目、doc 385 称 last_now 为类级属性但实际在 __init__ 内、doc 380 仍描述已废弃的 Action(key - pygame.K_1) 差值映射。
+- arch-ref-fix: 23 处 UNRESOLVED 为同名多候选（__init__.py×2、README.md×19 等），行号本身在候选文件范围内；reviewer 抽查 12/30/39/59/63/71-75/86/96-97 行内容全部吻合，判定按上下文语义指向根 README.md 成立。
+- arch-ref-fix: check_refs.py 原将 REPO 硬编码为主仓路径，导致在 worktree 中复跑得到假阳性（reviewer 发现）。已参数化为环境变量 ARCH_REF_REPO，并修正裸文件名的同名候选解析与 worktree 路径被误过滤的问题；修正后 worktree 与主仓复跑结果一致。
 
 ## 最近事件
 
-- 2026-11-02T16:15:21.068Z agent.action-result human-vs-machine 
-- 2026-11-02T16:15:24.351Z agent.action-observed human-vs-machine R-14cb6c25-afc2-4d9a-9e41-35986e27b782
-- 2026-11-02T16:15:24.876Z agent.action-result human-vs-machine R-14cb6c25-afc2-4d9a-9e41-35986e27b782
-- 2026-11-02T16:15:32.568Z agent.action-observed human-vs-machine 
-- 2026-11-02T16:15:32.994Z agent.action-result human-vs-machine 
-- 2026-11-02T16:15:45.396Z agent.loop-settled human-vs-machine 
-- 2026-11-02T16:16:11.801Z agent.request-observed human-vs-machine 
-- 2026-11-02T16:16:12.224Z agent.loop-started human-vs-machine 
-- 2026-11-02T16:16:19.347Z agent.action-observed human-vs-machine 
-- 2026-11-02T16:16:19.752Z agent.action-result human-vs-machine 
-- 2026-11-02T16:16:25.124Z agent.action-observed human-vs-machine 
-- 2026-11-02T16:16:25.527Z agent.action-result human-vs-machine 
+- 2026-11-02T17:30:57.856Z agent.action-result arch-ref-fix 
+- 2026-11-02T17:31:02.550Z agent.action-observed arch-ref-fix 
+- 2026-11-02T17:31:02.979Z agent.action-result arch-ref-fix 
+- 2026-11-02T17:31:09.460Z agent.action-observed arch-ref-fix 
+- 2026-11-02T17:31:09.890Z agent.action-result arch-ref-fix 
+- 2026-11-02T17:31:15.742Z deliverable.submitted arch-ref-fix R-547c30ef-be71-469c-99f7-8d7721ef7cfe
+- 2026-11-02T17:31:17.356Z agent.action-observed arch-ref-fix 
+- 2026-11-02T17:31:17.789Z agent.action-result arch-ref-fix 
+- 2026-11-02T17:31:25.454Z verification.recorded arch-ref-fix R-547c30ef-be71-469c-99f7-8d7721ef7cfe
+- 2026-11-02T17:31:27.767Z task.accepted arch-ref-fix 
+- 2026-11-02T17:31:29.481Z agent.action-observed arch-ref-fix 
+- 2026-11-02T17:31:29.910Z agent.action-result arch-ref-fix 
 
 ## 下一步
 
-- 处理 management/INBOX.md 中的 1 项待决策
+- 跟踪 management/views/TASKS.md；Run 出错查看对应任务 STATUS.md

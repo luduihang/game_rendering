@@ -20,7 +20,7 @@
 - pyproject.toml
 - run
 预算：60000000 tokens
-已分配任务预算：9090000 tokens
+已分配任务预算：12690000 tokens
 重要人工审批条件：
 - 触碰「不可碰」清单：core/rules.py 的规则语义、core/strength.py 的建表时机、agents/dqn.py 的 from_checkpoint 机制、core/dealing.py 的默认发牌、ui/ 的 snapshot/view 五字段契约
 - 任何改变状态编码维度（4 维输入 / 6 维动作）或多出/少出动作的改动

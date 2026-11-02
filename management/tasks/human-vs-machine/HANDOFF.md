@@ -5,7 +5,8 @@
 权限：{"commitBranch":true,"integrateBranch":false,"paths":["ui","tests","docs","README.md"],"readRepository":true,"tools":["bash","read","edit","write","grep","find","ls"],"writeWorkspace":true}
 当前工作空间：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/human-vs-machine
 基线：6bd6253bf9e122fe1df982f50e20b1b47f050db0
-未提交文件：M .agent/telemetry-state.json； M .agent/telemetry.jsonl； M .pi/agents/reviewer.md； M .pi/settings.json； M PROGRESS.md
-最新交付：无
+未提交文件：M .agent/telemetry-state.json； M .agent/telemetry.jsonl； M .pi/agents/reviewer.md； M .pi/settings.json； M PROGRESS.md；?? docs/review_human_vs_machine.md
+最新交付：bfa9881406b07da20dd8947a8c6347b8d2edbffc
+交付文件：M README.md；A docs/TRAINED-WEIGHTS-UI.md；A docs/selfplay_train_report.md；A management/evidence/logs/selfplay-pytest.txt；A management/evidence/logs/selfplay-ruff.txt；A management/evidence/logs/t3-pytest.txt；A management/evidence/logs/t3-ruff.txt；A management/evidence/logs/train100-pytest.txt；A management/evidence/logs/train100-ruff.txt；A management/evidence/logs/train100-train.txt；M scripts/env.py；M scripts/evaluate.py；M scripts/train.py；A tests/test_selfplay.py；A tests/test_selfplay_preset.py；A tests/test_trained_ui.py；M ui/app.py
 未决审批：无
 接管前必须运行 workspace inspect，检查未提交和未跟踪文件。

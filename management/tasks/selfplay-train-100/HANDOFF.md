@@ -8,5 +8,5 @@
 未提交文件：M .agent/telemetry-state.json； M .agent/telemetry.jsonl； M .pi/agents/reviewer.md； M .pi/settings.json； M PROGRESS.md；?? docs/review_train_100_final.md
 最新交付：7d58d4ebfc91913c5fa1153eeed94f91a61f65dd
 交付文件：A docs/selfplay_train_report.md；A management/evidence/logs/selfplay-pytest.txt；A management/evidence/logs/selfplay-ruff.txt；A management/evidence/logs/train100-pytest.txt；A management/evidence/logs/train100-ruff.txt；A management/evidence/logs/train100-train.txt；M scripts/env.py；M scripts/evaluate.py；M scripts/train.py；A tests/test_selfplay.py；A tests/test_selfplay_preset.py
-未决审批：D-02dadf0e-1078-43c9-b77c-836a357a1dff
+未决审批：无
 接管前必须运行 workspace inspect，检查未提交和未跟踪文件。

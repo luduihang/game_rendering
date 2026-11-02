@@ -1507,7 +1507,7 @@ run/final/_sync_tmp_seed7.pth
 
 ## human-vs-machine：跑通「玩家 vs 机器」的对抗：ui/ 侧默认加载自博弈训练产出的策略文件，机器用训练出来的逻辑（epsilon=0.0 贪心）而不是随机概率，并做 headless 端到端验证一局完整走通。这是用户的第二优先事项。Main Agent 只调度编排，编码全部由子 Agent 完成。
 
-- 状态：已批准；未验收
+- 状态：已验收；已验收
 - 预算：1800000 tokens；授权路径 ui, tests, docs, README.md
 
 - Delegation G-f7aa2f09-a403-4b56-98fd-e2b42051d6c6：worker
@@ -1667,4 +1667,265 @@ worker 声称已实现：checkpoint 路径可配置（CLI > 环境变量 > 默�
 
 **不要替 worker 补写代码**，只报告问题。**不要修改 pi 源码**。
     - 授权：工具 bash, read, edit, write, grep, find, ls；路径 ui, tests, docs, README.md；额度 45000 tokens
-        - Run R-14cb6c25-afc2-4d9a-9e41-35986e27b782：RUNNING；reviewer；模型 vllm-local/Qwen3.8-27B；用量未知
+        - Run R-14cb6c25-afc2-4d9a-9e41-35986e27b782：SUCCEEDED；reviewer；模型 vllm-local/Qwen3.8-27B；592002 tokens
+
+## final-audit：终审：独立核验 r4 基线的 9 条验收标准与「不可碰」清单，并同步更新 docs/ARCHITECTURE.md。核验由 reviewer 独立完成，文档更新由 worker 执行。Main Agent 只调度编排。
+
+- 状态：已批准；未验收
+- 预算：1800000 tokens；授权路径 docs, tests, ui, scripts, core, agents, README.md, CHANGELOG.md
+
+- Delegation G-74a86397-4641-4727-9a71-b7bf5c85ec2b：worker
+    - 目标：【T5 最终审计 + 架构文档同步】
+
+**worktree**：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/final-audit`
+**分支**：governance/final-audit，HEAD = `e137ff1`（已包含 T1~T4 的全部合并结果）
+**权重已就位**：`dqn_model_1.pth` 与 `run/final/*.pth`（gitignored，不入库）
+
+**硬约束**：
+- **不要修改 pi 的源码**（`/home/kipley/Documents/code/learning/pi` 下任何文件）。
+- **不要改 `core/`、`agents/` 的行为** —— 这是审计 Task，不是实现 Task。除非你发现**真实缺陷**（那就在报告里写明，不要擅自修）。
+- **不要改 `ui/app.py`、`ui/theme.py`、`scripts/` 的功能实现** —— 除非发现真实缺陷（同样只在报告里写明）。
+- 主要改动对象：`docs/ARCHITECTURE.md`（主）、`CHANGELOG.md`、`README.md`（如需）、`docs/` 下新文档。
+- 不得新增第三方依赖；不得把 `.pth` 纳入版本库。
+- **目标 40 分钟内完成。**
+
+## 背景：本次项目做了什么（你要审计并写进文档）
+
+**基线**：Project r4（ACTIVE），目标是「按 docs/ARCHITECTURE.md 第 7 节完成 S/M 级重构与 README 三处不一致修正；实现 DQN 对抗 DQN 自博弈训练，用训练产出的真实权重驱动交互界面的机器对手，消除当前因权重缺失而静默回退为随机策略的问题」。
+
+**已完成的 4 个 Task（都已通过独立 reviewer 核验）**：
+
+1. **T1 `selfplay-engine`**（`scripts/env.py` + `scripts/train.py` + `scripts/evaluate.py` + `tests/test_selfplay.py`）
+   - `scripts/env.py`：`CardGameEnv` 支持 DQN 对手、对手视角 4 维观测、零和双奖励、逐局座位交换；新增 `strength_shaping` 稠密零和奖励塑形。
+   - `scripts/train.py`：新增 `robot`/`self`/`snapshot` 三种对手模式、主/对手双 checkpoint、双方统计与复现字段、`--preset selfplay-v1`。
+   - `scripts/evaluate.py`：双 checkpoint 对战、双方胜率、`natural_end_rate`、checkpoint 隐藏层自适应加载。
+
+2. **T2 `selfplay-train-100`**（`tests/test_selfplay_preset.py` + `docs/selfplay_train_report.md`）
+   - 诊断出根因：终局奖励 `±all_bet` 量级随押注额线性增长 → Q 值单调偏好最大押注 → 贪心恒为 `bet_100`、对局永不自然结束、动作分布退化为单一动作。
+   - 解法：按**押注额**（而非底池）计酬的稠密零和塑形 `k·(p−0.5)·押注额`，k=50.0。
+   - 验收配方固化在 `scripts/train.py:51` `SELFPLAY_V1`：`strength_shaping=50.0 / lr=3e-2 / batch_size=4 / epsilon_decay=0.99 / epsilon_start=0.5 / opponent_replay_every=1 / hidden 缺省 (128,64)`。
+   - 一条命令复现：`python -m scripts.train --preset selfplay-v1 --episodes 100 --seed 7 --out run/final`
+   - 实测效果：ε=0 贪心下弱牌大注占比 0.008~0.149 / 强牌 1.000（单调）；`natural_end_rate=1.0`；同 seed 两次训练 sha256 一致。
+
+3. **T3 `human-vs-machine`**（`ui/app.py` + `tests/test_trained_ui.py` + `docs/TRAINED-WEIGHTS-UI.md`）
+   - `ui/app.py:29` `DEFAULT_CHECKPOINT = REPO/"dqn_model_1.pth"`；`ui/app.py:33` `resolve_checkpoint(arg, env)`，优先级 CLI > 环境变量 `DQN_CHECKPOINT` > 默认，相对路径按仓库根解析；`ui/app.py:296` `main()` 新增 `--checkpoint`。
+   - `ui/app.py:71-73` 新增 `Controller.checkpoint / trained / policy_source` 三个可观测字段。
+   - `ui/app.py:81-91` 缺失或损坏权重时三行醒目告警（明写「不是训练出的策略」），保留回退不崩溃；`ui/app.py:85` except 补 `pickle.PickleError`。
+
+4. **T4 `cleanup-refactor`**（`ui/app.py` 键码映射、`ui/theme.py` 注解、`core/__init__.py` `__all__`、README 三处修正、pyproject/CHANGELOG）。
+   - `ui/app.py` 键码差值映射改为显式映射表 `key_to_action_map()`（T4 与 T3 都改过 `ui/app.py`，合并后请以**当前文件实际内容**为准写文档）。
+   - `core/__init__.py` 补齐 `__all__` 至 21 项，且**保持 strength.py 的惰性建表不变**。
+
+## 你的任务
+
+### 任务 1：逐条核对 r4 基线的 successCriteria（审计）
+先读 `management/PROJECT.md` 拿到 r4 基线的完整 successCriteria（9 条）与「不可碰」清单，然后**逐条用 bash 核验**，输出带 `file:line` 证据。
+r4 基线的 successCriteria 大意（以 `management/PROJECT.md` 实际内容为准）：
+- S/M 级重构与 README 三处不一致修正完成
+- 自博弈训练机制成立
+- 真实权重驱动 UI 机器对手、消除静默回退
+- 红线零触碰
+- 测试全绿
+
+**核验方法**：用 `git diff 6bd6253..HEAD --stat` 确认改动范围；用 `git diff` 逐文件确认红线文件未变；跑 pytest/ruff；实跑一次训练与评估。
+
+### 任务 2：红线零改动核验
+逐个确认并给出 `file:line` 证据：
+- `core/rules.py` 规则语义未变（Action 枚举、座位 0 先手、6 个座位无关动作、snapshot 不含手牌）
+- `core/strength.py` 建表时机未变（惰性建表仍成立）
+- `agents/dqn.py` 的 `from_checkpoint` 维度自适应机制未变
+- `core/dealing.py` 默认均匀发牌未变
+- `ui/` 的 snapshot/view 五字段契约未变
+- 状态编码仍 4 维输入 / 6 维动作
+- 无新增/升级/删除第三方依赖
+- 未把 `.pth` 纳入版本库
+- 无删除/重命名/移动既有源码文件
+
+### 任务 3：更新 `docs/ARCHITECTURE.md`（核心交付）
+现有 439 行、8 章节、**大量 `file:line` 引用**。合并后行号已漂移，必须校正。要做：
+1. **校正所有因重构而失效的行号引用**。用脚本核对每个 `文件:行号` 引用是否仍指向同一内容（引用形如 `core/rules.py:31-37`）。逐条核对并修正失效的。
+2. **新增自博弈训练章节**：新增一节讲 `scripts/env.py` 的自博弈环境、零和与座位交换、`strength_shaping` 塑形（**含根因分析：为什么必须按押注额计酬**）、`scripts/train.py` 的三种对手模式与 `--preset selfplay-v1`、`scripts/evaluate.py` 的双 checkpoint 评估与 `natural_end_rate`。
+3. **新增机器对手接线章节**：UI 的 checkpoint 解析优先级、`Controller.trained`/`policy_source`、缺失/损坏权重的告警与回退、`--checkpoint` 与 `DQN_CHECKPOINT`。
+4. **新增权重获取与存放说明**：训练命令、产物路径（`run/final/dqn_sp_ep100_seed7.pth` 与 `run/final/dqn_sp_opp_ep100_seed7.pth`）、部署方式（复制为仓库根 `dqn_model_1.pth` 或用 `--checkpoint`）、为什么权重不入版本库（.gitignore `*.pth` / `run/`）、如何复现训练。
+5. **补 7.6/7.7 条目的处置结果**：现有第 7 节列了重构风险点，请为每条标注**已处置 / 保留 / 说明**。
+6. **补测试清单**：新增 `tests/test_selfplay.py`、`tests/test_selfplay_preset.py`、`tests/test_trained_ui.py` 三份测试文件的断言摘要（第 6 节）。
+7. 保持原有 8 章节结构与风格（中文、`file:line` 证据、不写空话）。**不要凭空编造**——每条陈述都要有代码依据。
+
+### 任务 4：独立复现验证
+- `python -m pytest tests/ -v --tb=no` → 应为 **160 passed / 0 failed**（权重已就位）
+- `python -m ruff check .` → All checks passed
+- 跑一次 `python -m scripts.train --preset selfplay-v1 --episodes 100 --seed 7 --out /tmp/audit_run` 并核对 summary（episodes=100、胜率不一边倒、双方动作分布非单一）
+- 跑一次 `python -m scripts.evaluate --checkpoint <产物> --opponent-checkpoint <产物> --rounds 50 --seed 7` 并核对 `natural_end_rate`
+- 核对 `python -m scripts.train --episodes 5 --seed 7 --opponent-mode self` 不再抛 KeyError
+
+### 任务 5：CHANGELOG.md
+追加本轮变更记录（自博弈训练、UI 接线、重构清理、测试新增）。
+
+## 交付
+- 提交到你的分支，commit message 说清改了什么。
+- **交付报告 ≤4000 字**：
+  - 任务 1 的 9 条 successCriteria 逐条判定 + `file:line` 证据
+  - 任务 2 的每条红线判定 + `file:line` 证据
+  - **架构文档的行号校正统计**：核对了几条引用、修正了几条、失效的典型例子
+  - 架构文档新增/修改了哪些章节
+  - 任务 4 的实际输出数字
+  - **发现的真实缺陷**（如果有）—— 只报告，不擅自修
+  - 未确认的标 UNKNOWN
+
+所有结论带 `文件路径:行号`。
+    - 授权：工具 bash, read, edit, write, grep, find, ls；路径 docs, tests, ui, scripts, core, agents, README.md, CHANGELOG.md；额度 90000 tokens
+        - Run R-fbe3fe00-4658-4bb9-b3fc-d50d73c6e843：CANCELLED；worker；模型 vllm-local/Qwen3.8-27B；1368547 tokens
+
+## arch-ref-fix：校正 docs/ARCHITECTURE.md 中因 T1~T4 重构而失效的 129 处 file:line 引用。清单已由 Main Agent 用脚本预先算好（含每条引用的旧内容、新行号、匹配方式），worker 不需要重新探索，只需定点核对并应用。这是 final-audit 拆分后的第一个 Task。
+
+- 状态：已验收；已验收
+- 预算：1800000 tokens；授权路径 docs
+
+- Delegation G-d5321825-6138-4896-869b-9c8f1c263c36：worker
+    - 目标：【T5a：校正 docs/ARCHITECTURE.md 的失效 file:line 引用 —— 方案已全部算好，你只需应用】
+
+**worktree**：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/arch-ref-fix`
+**分支**：governance/arch-ref-fix，HEAD = `c30b4f9`
+**写入范围**：`docs/` 目录（只改 `docs/ARCHITECTURE.md`）。**不要改任何源码。**
+
+**硬约束**：
+- 不要修改 pi 的源码（`/home/kipley/Documents/code/learning/pi` 下任何文件）。
+- 只改 `docs/ARCHITECTURE.md`。不要新增/删除章节结构，不要重写正文措辞 —— **你只改行号**。
+- 不新增第三方依赖。
+- 目标 **25 分钟内**完成。
+
+## 背景：为什么这个任务以前失败了
+上一个 worker 被要求「逐条核对 422 处 file:line 引用」，它按要求逐个读 63 个源码文件比对，结果上下文冲到 103%、消耗 136 万 token、架构文档 0 行产出。
+**这次不同：Main Agent 已经用脚本把所有修正方案算好了。** 你的工作是从清单里取数据、核对、应用，**不需要探索**。
+
+## 你要用的现成清单（**不要自己重新算**）
+`management/evidence/arch-ref/relocation-plan.json`
+- `fixed` 数组 **129 条**，每条字段：
+  - `doc_line`：ARCHITECTURE.md 里引用所在的行号
+  - `file`：被引用的源文件
+  - `ref`：旧的引用，如 `core/rules.py:31-37`
+  - `old_line_full`：**旧版本该行的完整内容**（用来确认）
+  - `new_line`：**新行号**（已定位）
+  - `new_file` / `new_ref`（仅 15 条人工确认项有这两个字段，其余用 `file` + `new_line`）
+  - `match`：定位方式（`exact` 99 / `contains` 6 / `anchor` 6 / `exact-multi` 3 / `manual-verified` 15）
+  - `note`：仅 `manual-verified` 项有，说明为什么这样改
+- `unresolved` 数组**为空**（129/129 全部定位完成）
+
+配套脚本（用于最后的自检）：
+`management/evidence/arch-ref/check_refs.py` —— 校验文档里所有 file:line 引用是否越界/文件缺失。
+
+## 你的工作（只有 3 件事）
+
+### 1. 逐条核对并应用修正
+用 python 读清单，**批量**处理，不要一条条手工编辑：
+
+```python
+import json, re, pathlib
+plan = json.load(open("management/evidence/arch-ref/relocation-plan.json"))
+doc_path = pathlib.Path("docs/ARCHITECTURE.md")
+lines = doc_path.read_text(encoding="utf-8").splitlines()
+for item in plan["fixed"]:
+    dl = item["doc_line"] - 1          # 0-based
+    target_file = item.get("new_file") or item["file"]
+    new_ref = item.get("new_ref")
+    if new_ref is None:
+        new_ref = f"{target_file}:{item['new_line']}"
+        if "-" in item["ref"].split(":")[1]:
+            new_ref = f"{target_file}:{item['new_line']}-{item['new_line']}"
+    ...
+```
+
+**关键**：一次 `edit` 调用里合并多个替换（工具支持多 edits），或写一个脚本一次性重写文件。**不要**为 129 处发 129 次 `edit` 调用。
+
+**必须做的抽查验证**（每条不必全验，但至少抽 30 条）：
+- 用 `sed -n '<new_line>p' <目标文件>` 确认该行内容与 `old_line_full` 语义一致（不是只对上行号，是内容对得上）
+- `match` 为 `exact-multi`（3 条）和 `contains`（6 条）的**全部**要验证 —— 这些是多匹配或部分匹配，最容易错
+- `manual-verified`（15 条）按 `note` 核对
+
+**注意**：`new_line` 是**单行**位置。原引用若是范围（如 `31-37`），先确认该范围的**语义内容**（例如「Action 枚举定义」）在新文件里对应的范围；新文件行数可能变化，**必要时按语义重新确定范围**，而不是机械地把范围压成单行。请在报告里说明哪些范围做了扩展或收窄。
+
+### 2. 自检：失效引用数降为 0
+```sh
+python management/evidence/arch-ref/check_refs.py
+```
+期望输出 `越界 0 处 | 文件缺失 0 处`（`r5/PLAN.md` 那 1 处是治理草稿目录、不是源码，可保留或改成不含行号的表述）。
+**若脚本报告仍有失效引用，修正后重跑，直到干净。**
+
+### 3. 提交
+提交到你的分支，commit message 说明校正了哪些文件。
+
+## 输出纪律（强制，违反会浪费大量 token）
+- **每条 bash 命令输出 ≤ 30 行。** 需要看大文件时用 `sed -n 'M,Np'` 定点看，**禁止 `cat` 或 `read` 整个 >300 行的文件**（`docs/ARCHITECTURE.md` 有 439 行，你可以只读你要改的那几段）。
+- 批量结果写入 `/tmp/arch_ref_check.txt`，**你只把摘要（≤20 行）读回上下文**。
+- **边做边写**：先写好交付报告的标题与已完成小节，每完成一项就补进去；不要攒到最后一次性输出。
+- **探索预算**：最多 20 次工具调用用于核对；达到即用清单里的结论收敛并提交。
+- 目标 25 分钟内完成。
+
+## 交付报告（≤2000 字，写在最终消息里即可）
+- 校正了多少处：自动定位应用了多少条、人工确认多少条
+- 范围型引用（`31-37` 这种）有多少条做了扩展/收窄，列出台数与依据
+- `check_refs.py` 的**最终输出**（越界/缺失数）
+- 抽查验证的条数与方式
+- 哪些引用你**没有**采用清单的方案、原因
+- 未确认的标 UNKNOWN
+
+所有结论带 `文件路径:行号`。**不要替别人补写代码，只改行号。**
+    - 授权：工具 bash, read, edit, write, grep, find, ls；路径 docs；额度 60000 tokens
+        - Run R-547c30ef-be71-469c-99f7-8d7721ef7cfe：SUCCEEDED；worker；模型 vllm-local/Qwen3.8-27B；1623246 tokens
+- Delegation G-d3aea24f-0c3a-4e3d-89c5-c71d56fafaa1：reviewer
+    - 目标：【T5a 轻量复核：ARCHITECTURE.md 的 129 处行号引用校正】
+
+**worktree**：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/arch-ref-fix`
+**分支**：governance/arch-ref-fix，HEAD = `7f59339`（基线 `c30b4f9`）
+**只读复核**：不改源码、不提交。
+
+**第一件事**：跑 `bash -lc 'echo TOOL_OK && git log --oneline -1'`。没有 bash 就立刻回复说明。
+
+## 这是一次**小范围**复核，目标是 15 分钟内完成
+唯一问题：**这 129 处行号修正是否真的指向了正确的代码？**
+
+**不要通读 `docs/ARCHITECTURE.md`（439 行）。不要 cat 整个源文件。** 定点看。
+
+## 三件事（只有三件）
+
+### 1. 改动范围正确性
+```sh
+git diff --stat c30b4f9..7f59339
+```
+应**只有** `docs/ARCHITECTURE.md`（88 增 88 删），无其他文件。
+
+### 2. 引用整体有效性（写脚本，不要手工逐条看）
+写一个脚本：解析 `docs/ARCHITECTURE.md` 里所有 `file.ext:NN` 或 `file.ext:NN-MM` 引用；
+- **裸文件名**（如 `rules.py`）按仓库内唯一同名文件解析；有多同名候选的记为 UNRESOLVED（`__init__.py` 已知有 2 处、`r5/PLAN.md` 1 处，属已知例外）
+- 带路径的按仓库根解析
+输出：**总引用数 / 行号越界数 / 文件缺失数**
+期望：总引用 422、越界 0、缺失仅已知的 3 处例外。
+
+### 3. 抽样核对内容（抽 20 条，重点抽高风险类型）
+从 `management/evidence/arch-ref/relocation-plan.json` 的 `fixed` 数组里抽样，**优先抽** `match` 为 `exact-multi`(3)、`contains`(6)、`anchor`(6)、`manual-verified`(15) 的条目 —— 这些最容易错。
+
+对每条：用 `sed -n '<new_line>p' <file>` 取出该行，确认其**语义**与文档中该引用的描述一致（不是只看行号在范围内）。
+
+**另外重点核对 worker 声明的 3 处「未采用清单方案」**：
+- doc 164 → `ui/app.py:137-142`（时限设置块）
+- doc 164 → `ui/app.py:154`（`_schedule` 调用）
+- doc 380 → `ui/app.py:267-268`（键码映射）
+确认这 3 处**比清单的方案更准确**（worker 的理由：清单是机械匹配，命中了同名的另一处）。
+
+## 输出纪律（强制）
+- 每条 bash 输出 ≤ 30 行；大文件只 `sed -n 'M,Np'` 定点看。
+- 抽样核对结果写入 `/tmp/review_arch_ref.txt`，你只把摘要（≤20 行）读回上下文。
+- **边做边写**结论，不要攒到最后。
+- 探索预算：最多 25 次工具调用。
+
+## 报告（≤1500 字）
+- 三件事各自的判定（通过/不通过/部分通过）
+- 你自己跑出的引用统计数字
+- 20 条抽样中**不通过**的有几条、具体是哪些、错在哪
+- 那 3 处「未采用清单方案」的裁决结论
+- **必须返工项**（没有就明确写"无"）
+- 风险与遗留
+
+**不要替 worker 补写内容，只报告问题。**
+    - 授权：工具 bash, read, grep, find, ls；路径 docs；额度 25000 tokens
+        - Run R-260d66ae-1c6b-4fca-9a15-5b358a0c2494：SUCCEEDED；reviewer；模型 vllm-local/Qwen3.8-27B；597270 tokens

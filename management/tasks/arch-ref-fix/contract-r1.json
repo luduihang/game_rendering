@@ -1,0 +1,37 @@
+{
+  "acceptance": [
+    "129 处失效 file:line 引用全部校正：清单中 108 处「自动定位」的直接应用；21 处「锚点定位」的逐条定点核对后确认或修正；无法确认的改写为不依赖具体行号的表述并在报告中列明",
+    "校正后重跑校验脚本 management/evidence/retrospective/check_refs.py，失效引用数降为 0，且未引入新的越界引用",
+    "提交到分支，commit message 说明校正了哪些文件的引用"
+  ],
+  "authority": {
+    "commitBranch": true,
+    "integrateBranch": false,
+    "paths": [
+      "docs"
+    ],
+    "readRepository": true,
+    "tools": [
+      "bash",
+      "read",
+      "edit",
+      "write",
+      "grep",
+      "find",
+      "ls"
+    ],
+    "writeWorkspace": true
+  },
+  "budgetTokens": 1800000,
+  "dependencies": [],
+  "goal": "校正 docs/ARCHITECTURE.md 中因 T1~T4 重构而失效的 129 处 file:line 引用。清单已由 Main Agent 用脚本预先算好（含每条引用的旧内容、新行号、匹配方式），worker 不需要重新探索，只需定点核对并应用。这是 final-audit 拆分后的第一个 Task。",
+  "maxConcurrent": 1,
+  "maxDepth": 1,
+  "owner": "main-agent",
+  "revision": 1,
+  "scope": [
+    "docs"
+  ],
+  "splitReason": "原 final-audit 单次委派包含 5 个子任务、要求 worker 手工校验 63 个文件，导致上下文冲到 103%、消耗 136 万 token 且零产出（见 management/DELEGATION-RETROSPECTIVE.md §3.1）。拆为「引用校正」与「新章节撰写」两个串行 Task，各自 ≤3 件事。",
+  "taskId": "arch-ref-fix"
+}
