@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/cleanup-refactor
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 122 items
+
+tests/test_agents.py FFF.FFF.............                                [ 16%]
+tests/test_dealing.py ........                                           [ 22%]
+tests/test_evaluator.py .....................                            [ 40%]
+tests/test_purity.py .....                                               [ 44%]
+tests/test_rules.py .................                                    [ 58%]
+tests/test_scripts.py ........FF...                                      [ 68%]
+tests/test_strength.py ........                                          [ 75%]
+tests/test_ui.py ..............................                          [100%]
+
+=========================== short test summary info ============================
+FAILED tests/test_agents.py::TestCheckpointDims::test_keeper_checkpoint_is_four_dim
+FAILED tests/test_agents.py::TestCheckpointDims::test_from_checkpoint_matches_actual_dims
+FAILED tests/test_agents.py::TestCheckpointDims::test_mismatched_dims_raise_clear_error
+FAILED tests/test_agents.py::TestD9LoadedPolicyInEffect::test_epsilon_defaults_to_zero_after_load
+FAILED tests/test_agents.py::TestD9LoadedPolicyInEffect::test_loaded_policy_is_deterministic
+FAILED tests/test_agents.py::TestD9LoadedPolicyInEffect::test_loaded_policy_differs_from_random
+FAILED tests/test_scripts.py::TestEvaluate::test_smoke_with_keeper_checkpoint
+FAILED tests/test_scripts.py::TestEvaluate::test_action_distribution_is_concentrated
+======================== 8 failed, 114 passed in 5.14s =========================
