@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import os
+import pickle
 import random
 from pathlib import Path
 
@@ -22,7 +24,27 @@ from core.strength import beats_probability
 from ui.clock import Ticker, TickPolicy
 
 REPO = Path(__file__).resolve().parents[1]
+# 自博弈训练产出的部署策略（scripts/train.py SELFPLAY_V1，100 局 seed=7），
+# 即 run/final/dqn_sp_ep100_seed7.pth 的副本（权重被 .gitignore 忽略，不进版本库）。
 DEFAULT_CHECKPOINT = REPO / "dqn_model_1.pth"
+CHECKPOINT_ENV_VAR = "DQN_CHECKPOINT"
+
+
+def resolve_checkpoint(arg: str | Path | None = None, env: dict | None = None) -> Path:
+    """解析 DQN 权重路径，优先级：CLI 参数 > 环境变量 DQN_CHECKPOINT > 默认值。
+
+    - ``arg``：命令行 ``--checkpoint`` 传入的路径（可为绝对路径或相对路径）；
+    - 环境变量 ``DQN_CHECKPOINT``：``arg`` 缺省/为空时生效；
+    - 默认：仓库根目录下的 ``dqn_model_1.pth``。
+
+    相对路径一律按仓库根目录（``REPO``）解析，与当前工作目录无关。
+    """
+    env = os.environ if env is None else env
+    raw = arg if arg not in (None, "") else env.get(CHECKPOINT_ENV_VAR)
+    if raw in (None, ""):
+        return DEFAULT_CHECKPOINT
+    path = Path(str(raw))
+    return path if path.is_absolute() else REPO / path
 
 
 class Controller:
@@ -31,7 +53,7 @@ class Controller:
     def __init__(
         self,
         seed: int | None = None,
-        checkpoint: Path | str = DEFAULT_CHECKPOINT,
+        checkpoint: Path | str | None = None,
         human_player: int = 0,
         think_seconds: float = 0.6,
         settle_seconds: float = 0.4,
@@ -46,7 +68,9 @@ class Controller:
         self.rng = random.Random(seed)
         self.encoder = StateEncoder()
 
-        self.agent = self._load_agent(checkpoint)
+        self.checkpoint = resolve_checkpoint(checkpoint)
+        self.agent, self.trained = self._load_agent(self.checkpoint)
+        self.policy_source = str(self.checkpoint) if self.trained else "untrained-random(epsilon=0.15)"
         self.room: GameRoom = None  # type: ignore[assignment]
         self.first_player = human_player
         self.ai_deadline: float | None = None
@@ -54,12 +78,18 @@ class Controller:
         self.new_round()
 
     # ---------- 初始化 ----------
-    def _load_agent(self, checkpoint) -> DQNAgent:
+    def _load_agent(self, checkpoint: Path) -> tuple[DQNAgent, bool]:
+        """加载训练权重；失败时回退为未训练随机策略，但必须给出醒目告警（不再静默）。"""
         try:
-            return DQNAgent.from_checkpoint(checkpoint, seed=self.seed)
-        except (FileNotFoundError, ValueError, RuntimeError) as exc:
-            print(f"[提示] 未能加载权重 {checkpoint}（{exc}），回退为未训练策略")
-            return DQNAgent(input_dim=4, action_dim=6, seed=self.seed, epsilon=0.15)
+            agent = DQNAgent.from_checkpoint(checkpoint, seed=self.seed)
+        except (FileNotFoundError, ValueError, RuntimeError, pickle.PickleError) as exc:
+            print(f"[警告] 未能加载训练权重 {checkpoint}（{exc}）")
+            print("[警告] 当前机器方为**未训练随机策略（epsilon=0.15）**，不是训练出的策略，走位纯随机！")
+            print(f"[警告] 请将自博弈训练产出的权重放到默认位置 {DEFAULT_CHECKPOINT}，"
+                  f"或用 --checkpoint / 环境变量 {CHECKPOINT_ENV_VAR} 指定权重路径。")
+            return DQNAgent(input_dim=4, action_dim=6, seed=self.seed, epsilon=0.15), False
+        print(f"[信息] 已加载训练权重 {checkpoint}（epsilon=0.0 贪心策略）")
+        return agent, True
 
     def new_round(self, now: float | None = None) -> None:
         deck = new_deck(self.rng)
@@ -255,16 +285,29 @@ class App:
 
 
 def main(argv=None) -> int:
+    import argparse
+
     import pygame
 
     import const
     from ui.render import Renderer
 
+    parser = argparse.ArgumentParser(description="炸金花：人类 vs DQN")
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help=(
+            f"DQN 权重 .pth 路径（绝对路径或相对仓库根目录）；缺省时依次读环境变量 "
+            f"{CHECKPOINT_ENV_VAR}，再缺省用 {DEFAULT_CHECKPOINT.name}"
+        ),
+    )
+    args = parser.parse_args(argv)
+
     pygame.init()
     pygame.display.set_caption("炸金花 · 人类 vs DQN")
     pygame.display.set_mode((const.GAME_WIDTH_SIZE, const.GAME_HEIGHT_SIZE))
 
-    controller = Controller(seed=None)
+    controller = Controller(seed=None, checkpoint=args.checkpoint)
     renderer = Renderer()
     missing = [name for name in ("background", "card_dir") if not Path(const.ROOT / "src").exists()]
     if missing:
