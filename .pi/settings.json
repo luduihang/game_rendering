@@ -30,7 +30,8 @@
           "read",
           "grep",
           "find",
-          "ls"
+          "ls",
+          "bash"
         ],
         "description": "独立审核与验证，不替 worker 补写",
         "disabled": false
