@@ -1,0 +1,614 @@
+[
+ {
+  "runId": "R-b9853e0d-6e92-4850-88e2-7ba398568e00",
+  "task": "architecture-survey",
+  "agent": "reader",
+  "outcome": "failed",
+  "dur_min": 15,
+  "turns": 12,
+  "out_tok": 12081,
+  "ctx_peak": 40982,
+  "chars": 64026,
+  "tools": {
+   "read": 12,
+   "ls": 2,
+   "grep": 22
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 15,
+  "usageTokens": 216659,
+  "start": "2026-11-02T03:48:45.938000+00:00"
+ },
+ {
+  "runId": "R-c087e5df-6c86-4acb-aef4-a315fb801999",
+  "task": "architecture-survey",
+  "agent": "reader",
+  "outcome": "failed",
+  "dur_min": 15,
+  "turns": 16,
+  "out_tok": 10297,
+  "ctx_peak": 54121,
+  "chars": 92926,
+  "tools": {
+   "read": 22,
+   "ls": 7,
+   "grep": 22,
+   "find": 1
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 15,
+  "usageTokens": 405622,
+  "start": "2026-11-02T03:48:52.063000+00:00"
+ },
+ {
+  "runId": "R-148f4a06-7cfa-432c-81c0-17ccca18db30",
+  "task": "architecture-survey",
+  "agent": "reader",
+  "outcome": "failed",
+  "dur_min": 15,
+  "turns": 31,
+  "out_tok": 4862,
+  "ctx_peak": 102568,
+  "chars": 220485,
+  "tools": {
+   "read": 29,
+   "ls": 18,
+   "grep": 40,
+   "find": 1
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 15,
+  "usageTokens": 1638055,
+  "start": "2026-11-02T03:48:58.767000+00:00"
+ },
+ {
+  "runId": "R-c57e84c3-c2a9-4f49-872b-7aaf754dfe91",
+  "task": "architecture-knowledge-base",
+  "agent": "reader",
+  "outcome": "finished",
+  "dur_min": 4,
+  "turns": 5,
+  "out_tok": 12288,
+  "ctx_peak": 15523,
+  "chars": 36546,
+  "tools": {
+   "read": 8,
+   "ls": 1,
+   "grep": 4
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 45,
+  "usageTokens": 66157,
+  "start": "2026-11-02T04:10:01.036000+00:00"
+ },
+ {
+  "runId": "R-59b098c2-921a-4e06-bdd1-c027f6bae2a1",
+  "task": "architecture-knowledge-base",
+  "agent": "reader",
+  "outcome": "finished",
+  "dur_min": 15,
+  "turns": 33,
+  "out_tok": 12288,
+  "ctx_peak": 64684,
+  "chars": 126384,
+  "tools": {
+   "read": 26,
+   "ls": 17,
+   "grep": 42,
+   "find": 3
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 45,
+  "usageTokens": 1308222,
+  "start": "2026-11-02T04:10:07.451000+00:00"
+ },
+ {
+  "runId": "R-6277d607-f2cc-4fb1-990f-b740b4fb6c2d",
+  "task": "architecture-knowledge-base",
+  "agent": "reader",
+  "outcome": "finished",
+  "dur_min": 13,
+  "turns": 16,
+  "out_tok": 6394,
+  "ctx_peak": 42820,
+  "chars": 62582,
+  "tools": {
+   "read": 18,
+   "ls": 1,
+   "grep": 16,
+   "find": 1
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 45,
+  "usageTokens": 363778,
+  "start": "2026-11-02T04:17:17.184000+00:00"
+ },
+ {
+  "runId": "R-e756980e-4a01-45c5-bd73-01681cdce55a",
+  "task": "architecture-knowledge-base",
+  "agent": "reader",
+  "outcome": "finished",
+  "dur_min": 11,
+  "turns": 12,
+  "out_tok": 4549,
+  "ctx_peak": 54603,
+  "chars": 83773,
+  "tools": {
+   "read": 19,
+   "ls": 9,
+   "grep": 25,
+   "find": 1
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 45,
+  "usageTokens": 392507,
+  "start": "2026-11-02T04:28:30.207000+00:00"
+ },
+ {
+  "runId": "R-d54bff1a-f47b-4a96-834c-e80648fe70c1",
+  "task": "architecture-knowledge-base",
+  "agent": "worker",
+  "outcome": "finished",
+  "dur_min": 17,
+  "turns": 22,
+  "out_tok": 23364,
+  "ctx_peak": 77060,
+  "chars": 72714,
+  "tools": {
+   "read": 11,
+   "bash": 11,
+   "write": 1,
+   "edit": 2
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 30,
+  "usageTokens": 1022624,
+  "start": "2026-11-02T04:43:25.440000+00:00"
+ },
+ {
+  "runId": "R-7d6a65d2-d66a-43cc-bfee-67c85cd0416a",
+  "task": "architecture-knowledge-base",
+  "agent": "reviewer",
+  "outcome": "failed",
+  "dur_min": 30,
+  "turns": 25,
+  "out_tok": 8797,
+  "ctx_peak": 111623,
+  "chars": 165881,
+  "tools": {
+   "read": 38,
+   "ls": 2,
+   "grep": 2,
+   "find": 2
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 30,
+  "usageTokens": 739599,
+  "start": "2026-11-02T05:02:54.940000+00:00"
+ },
+ {
+  "runId": "R-c0feb4e1-6de9-4e0f-8add-196900d2a697",
+  "task": "architecture-knowledge-base",
+  "agent": "reviewer",
+  "outcome": "finished",
+  "dur_min": 8,
+  "turns": 5,
+  "out_tok": 13321,
+  "ctx_peak": 44308,
+  "chars": 53809,
+  "tools": {
+   "read": 24
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 131240,
+  "start": "2026-11-02T05:37:08.987000+00:00"
+ },
+ {
+  "runId": "R-31dae8ab-8645-4f6d-a1da-7c179c9222aa",
+  "task": "architecture-knowledge-base",
+  "agent": "reviewer",
+  "outcome": "finished",
+  "dur_min": 13,
+  "turns": 6,
+  "out_tok": 21378,
+  "ctx_peak": 61637,
+  "chars": 84369,
+  "tools": {
+   "read": 16,
+   "ls": 2,
+   "grep": 5
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 220910,
+  "start": "2026-11-02T05:37:36.474000+00:00"
+ },
+ {
+  "runId": "R-3b7f69cb-4da6-43f2-b1ea-2741e27f651f",
+  "task": "architecture-knowledge-base",
+  "agent": "worker",
+  "outcome": "finished",
+  "dur_min": 11,
+  "turns": 9,
+  "out_tok": 8673,
+  "ctx_peak": 58637,
+  "chars": 74203,
+  "tools": {
+   "read": 12,
+   "bash": 5,
+   "edit": 1
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 30,
+  "usageTokens": 342303,
+  "start": "2026-11-02T05:54:34.835000+00:00"
+ },
+ {
+  "runId": "R-a76db659-51d1-48f0-a73b-f57628a4d889",
+  "task": "dqn-vs-dqn-investigation",
+  "agent": "reader",
+  "outcome": "finished",
+  "dur_min": 16,
+  "turns": 20,
+  "out_tok": 7545,
+  "ctx_peak": 62436,
+  "chars": 115762,
+  "tools": {
+   "read": 21,
+   "ls": 12,
+   "find": 2,
+   "grep": 16
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 45,
+  "usageTokens": 647753,
+  "start": "2026-11-02T07:38:31.598000+00:00"
+ },
+ {
+  "runId": "R-30f786fa-07bc-45e5-8102-c936d9bc440d",
+  "task": "dqn-vs-dqn-investigation",
+  "agent": "reader",
+  "outcome": "finished",
+  "dur_min": 13,
+  "turns": 17,
+  "out_tok": 6677,
+  "ctx_peak": 49379,
+  "chars": 93927,
+  "tools": {
+   "read": 20,
+   "ls": 3,
+   "grep": 15,
+   "find": 1
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 45,
+  "usageTokens": 508191,
+  "start": "2026-11-02T07:38:46.468000+00:00"
+ },
+ {
+  "runId": "R-f241bbd7-1559-42ee-b13e-23974b06e795",
+  "task": "dqn-vs-dqn-investigation",
+  "agent": "reader",
+  "outcome": "finished",
+  "dur_min": 24,
+  "turns": 42,
+  "out_tok": 10391,
+  "ctx_peak": 97495,
+  "chars": 178251,
+  "tools": {
+   "read": 39,
+   "ls": 9,
+   "find": 3,
+   "grep": 33
+  },
+  "maxAlloc": 30000,
+  "timeoutMin": 45,
+  "usageTokens": 2118392,
+  "start": "2026-11-02T07:39:04.038000+00:00"
+ },
+ {
+  "runId": "R-81abd01e-48ce-4f38-bc63-6d3063d46641",
+  "task": "selfplay-engine",
+  "agent": "worker",
+  "outcome": "finished",
+  "dur_min": 31,
+  "turns": 43,
+  "out_tok": 25690,
+  "ctx_peak": 87045,
+  "chars": 95060,
+  "tools": {
+   "read": 10,
+   "bash": 30,
+   "ls": 1,
+   "grep": 3,
+   "write": 4,
+   "edit": 5
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 90,
+  "usageTokens": 2501820,
+  "start": "2026-11-02T09:00:46.474000+00:00"
+ },
+ {
+  "runId": "R-948ba62d-36c6-4b93-9e87-2db4f92db8c9",
+  "task": "cleanup-refactor",
+  "agent": "worker",
+  "outcome": "finished",
+  "dur_min": 28,
+  "turns": 63,
+  "out_tok": 13944,
+  "ctx_peak": 93767,
+  "chars": 120992,
+  "tools": {
+   "bash": 54,
+   "read": 11,
+   "edit": 11
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 90,
+  "usageTokens": 3779913,
+  "start": "2026-11-02T09:01:37.288000+00:00"
+ },
+ {
+  "runId": "R-19d2f6bd-8e3a-4464-a95a-ab2cf8ba526e",
+  "task": "selfplay-engine",
+  "agent": "reviewer",
+  "outcome": "finished",
+  "dur_min": 1,
+  "turns": 4,
+  "out_tok": 730,
+  "ctx_peak": 7565,
+  "chars": 7700,
+  "tools": {
+   "read": 2,
+   "ls": 1,
+   "contact_supervisor": 1
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 27471,
+  "start": "2026-11-02T09:33:51.083000+00:00"
+ },
+ {
+  "runId": "R-9994d3e0-f2b2-4c02-99f9-30663d4f5165",
+  "task": "cleanup-refactor",
+  "agent": "reviewer",
+  "outcome": "cancelled",
+  "dur_min": 1,
+  "turns": 5,
+  "out_tok": 1687,
+  "ctx_peak": 8782,
+  "chars": 8373,
+  "tools": {
+   "read": 7,
+   "ls": 2
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 32156,
+  "start": "2026-11-02T09:34:39.717000+00:00"
+ },
+ {
+  "runId": "R-44ac84dd-8e85-4a6b-a120-6a76aaf0e431",
+  "task": "selfplay-engine",
+  "agent": "reviewer",
+  "outcome": "finished",
+  "dur_min": 15,
+  "turns": 30,
+  "out_tok": 7283,
+  "ctx_peak": 54931,
+  "chars": 95389,
+  "tools": {
+   "read": 7,
+   "bash": 31
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 993580,
+  "start": "2026-11-02T09:36:25.646000+00:00"
+ },
+ {
+  "runId": "R-645c1980-4d3a-41fe-a644-60ee2a64b1f8",
+  "task": "cleanup-refactor",
+  "agent": "reviewer",
+  "outcome": "finished",
+  "dur_min": 17,
+  "turns": 39,
+  "out_tok": 4592,
+  "ctx_peak": 65728,
+  "chars": 103263,
+  "tools": {
+   "read": 7,
+   "bash": 43
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 1776605,
+  "start": "2026-11-02T09:36:43.083000+00:00"
+ },
+ {
+  "runId": "R-dd2699b1-5cc3-4f78-91a2-1081a599975e",
+  "task": "selfplay-train-100",
+  "agent": "worker",
+  "outcome": "failed",
+  "dur_min": 90,
+  "turns": 100,
+  "out_tok": 4169,
+  "ctx_peak": 113154,
+  "chars": 161906,
+  "tools": {
+   "bash": 65,
+   "read": 13,
+   "edit": 25,
+   "write": 2
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 90,
+  "usageTokens": 3565367,
+  "start": "2026-11-02T09:59:38.627000+00:00"
+ },
+ {
+  "runId": "R-c1712b23-6c72-4d3e-983a-9976034da077",
+  "task": "selfplay-train-100",
+  "agent": "worker",
+  "outcome": "finished",
+  "dur_min": 20,
+  "turns": 29,
+  "out_tok": 9636,
+  "ctx_peak": 62496,
+  "chars": 86824,
+  "tools": {
+   "read": 4,
+   "bash": 27,
+   "edit": 4,
+   "write": 3
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 90,
+  "usageTokens": 1289853,
+  "start": "2026-11-02T13:30:11.278000+00:00"
+ },
+ {
+  "runId": "R-e6879920-cfcb-4958-94b9-1e802a3ef28f",
+  "task": "selfplay-train-100",
+  "agent": "reviewer",
+  "outcome": "failed",
+  "dur_min": 40,
+  "turns": 48,
+  "out_tok": 11476,
+  "ctx_peak": 112092,
+  "chars": 215358,
+  "tools": {
+   "read": 63,
+   "ls": 49,
+   "grep": 19,
+   "contact_supervisor": 1
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 699729,
+  "start": "2026-11-02T13:59:07.798000+00:00"
+ },
+ {
+  "runId": "R-2569c185-4b3b-4693-a102-cd8b1ad43986",
+  "task": "selfplay-train-100",
+  "agent": "worker",
+  "outcome": "finished",
+  "dur_min": 22,
+  "turns": 37,
+  "out_tok": 5299,
+  "ctx_peak": 74857,
+  "chars": 96253,
+  "tools": {
+   "read": 9,
+   "bash": 30,
+   "ls": 2,
+   "edit": 4
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 90,
+  "usageTokens": 1950422,
+  "start": "2026-11-02T14:47:35.442000+00:00"
+ },
+ {
+  "runId": "R-f3136e0a-a69b-4dd4-8add-51a06956a570",
+  "task": "selfplay-train-100",
+  "agent": "reviewer",
+  "outcome": "failed",
+  "dur_min": 15,
+  "turns": 10,
+  "out_tok": 6648,
+  "ctx_peak": 38491,
+  "chars": 54182,
+  "tools": {
+   "read": 12,
+   "ls": 18,
+   "find": 2,
+   "grep": 5,
+   "contact_supervisor": 1
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 231040,
+  "start": "2026-11-02T15:12:51.794000+00:00"
+ },
+ {
+  "runId": "R-f20e8e16-850c-4ad7-acfc-f3fe439648d5",
+  "task": "selfplay-train-100",
+  "agent": "reviewer",
+  "outcome": "finished",
+  "dur_min": 14,
+  "turns": 31,
+  "out_tok": 2407,
+  "ctx_peak": 35672,
+  "chars": 37538,
+  "tools": {
+   "bash": 37
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 727041,
+  "start": "2026-11-02T15:32:08.216000+00:00"
+ },
+ {
+  "runId": "R-0054a175-50bb-42b0-8a33-4f1feaa76bb7",
+  "task": "human-vs-machine",
+  "agent": "worker",
+  "outcome": "finished",
+  "dur_min": 16,
+  "turns": 30,
+  "out_tok": 6235,
+  "ctx_peak": 60724,
+  "chars": 85145,
+  "tools": {
+   "read": 8,
+   "bash": 26,
+   "edit": 4,
+   "write": 2
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 90,
+  "usageTokens": 1252548,
+  "start": "2026-11-02T15:47:44.139000+00:00"
+ },
+ {
+  "runId": "R-14cb6c25-afc2-4d9a-9e41-35986e27b782",
+  "task": "human-vs-machine",
+  "agent": "reviewer",
+  "outcome": "finished",
+  "dur_min": 12,
+  "turns": 27,
+  "out_tok": 4045,
+  "ctx_peak": 35552,
+  "chars": 49329,
+  "tools": {
+   "bash": 29,
+   "read": 2,
+   "grep": 1
+  },
+  "maxAlloc": 60000,
+  "timeoutMin": 40,
+  "usageTokens": 592002,
+  "start": "2026-11-02T16:07:07.091000+00:00"
+ },
+ {
+  "runId": "R-fbe3fe00-4658-4bb9-b3fc-d50d73c6e843",
+  "task": "final-audit",
+  "agent": "worker",
+  "outcome": "cancelled",
+  "dur_min": 9,
+  "turns": 26,
+  "out_tok": 4709,
+  "ctx_peak": 134511,
+  "chars": 309745,
+  "tools": {
+   "read": 21,
+   "bash": 13
+  },
+  "maxAlloc": 120000,
+  "timeoutMin": 90,
+  "usageTokens": 1368547,
+  "start": "2026-11-02T16:20:23.252000+00:00"
+ }
+]
