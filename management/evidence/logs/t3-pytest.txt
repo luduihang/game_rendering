@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/human-vs-machine
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 156 items
+
+tests/test_agents.py ....................                                [ 12%]
+tests/test_dealing.py ........                                           [ 17%]
+tests/test_evaluator.py .....................                            [ 31%]
+tests/test_purity.py ....                                                [ 33%]
+tests/test_rules.py .................                                    [ 44%]
+tests/test_scripts.py .............                                      [ 53%]
+tests/test_selfplay.py ...............                                   [ 62%]
+tests/test_selfplay_preset.py ......                                     [ 66%]
+tests/test_strength.py ........                                          [ 71%]
+tests/test_trained_ui.py .................                               [ 82%]
+tests/test_ui.py ...........................                             [100%]
+
+============================= 156 passed in 18.28s =============================

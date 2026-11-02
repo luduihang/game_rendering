@@ -9,8 +9,19 @@ Python + pygame 实现的「炸金花」三张牌游戏，对手是一个 DQN �
 
 ```bash
 pip install -e ".[dev]"          # 安装依赖（建议在 conda env / venv 中）
-python draw_me_vs_DQN_Plus.py    # 开始游戏
+python draw_me_vs_DQN_Plus.py    # 开始游戏（机器加载训练权重）
 ```
+
+机器对手的权重默认是仓库根的 `dqn_model_1.pth`（自博弈训练产出，`epsilon=0.0` 贪心策略）：
+
+```bash
+python draw_me_vs_DQN_Plus.py --checkpoint run/final/dqn_sp_opp_ep100_seed7.pth  # 指定其他权重
+DQN_CHECKPOINT=my_model.pth python draw_me_vs_DQN_Plus.py                        # 或用环境变量
+```
+
+路径优先级：`--checkpoint` > 环境变量 `DQN_CHECKPOINT` > 默认 `dqn_model_1.pth`；
+相对路径按仓库根目录解析。权重缺失时机器回退为**未训练随机策略（epsilon=0.15）**，
+启动会打印醒目的 `[警告]`（不崩溃）。详见 [`docs/TRAINED-WEIGHTS-UI.md`](docs/TRAINED-WEIGHTS-UI.md)。
 
 需要特定 CUDA 版本时先单独安装 torch：
 
@@ -62,6 +73,7 @@ pip install -e ".[dev]"
 | 无模块在 import 期加载权重 | `tests/test_agents.py::TestLayeringAndImportPurity` |
 | `ui/`、`scripts/` 无 `time.sleep` | `tests/test_ui.py::TestTicker::test_no_sleep_in_source` |
 | UI 不自行记账（渲染值 = core 快照） | `tests/test_ui.py::TestUICoreConsistency` |
+| 机器动作来自训练权重（epsilon=0.0，headless 端到端一局） | `tests/test_trained_ui.py` |
 
 ## 目录
 
@@ -71,7 +83,7 @@ agents/    base·dqn·robot                            策略实现
 ui/        app·clock·render·theme                    渲染与事件循环
 scripts/   env·train·evaluate                        训练/评估入口
 mymath/    func_const·probability_func               概率密度工具（Robot 依赖）
-tests/     单元测试 + baseline 缺陷回归脚本
+tests/     单元测试 + baseline 缺陷回归脚本（含 headless 人机对局验收）
 src/       美术与音频资源
 ```
 
@@ -84,7 +96,9 @@ src/       美术与音频资源
 | 评估 | `python -m scripts.evaluate --rounds 500 --seed 7 --checkpoint dqn_model_1.pth` |
 | 测试 | `pytest -q` / `ruff check .` |
 
-产物统一写入 `run/`（已被 `.gitignore` 覆盖）。同种子两次训练产出**逐位一致**的权重。
+产物统一写入 `run/`（已被 `.gitignore` 覆盖，含权重 `.pth`）。同种子两次训练产出**逐位一致**的权重。
+自博弈训练产出的部署权重是仓库根的 `dqn_model_1.pth`（= `run/final/dqn_sp_ep100_seed7.pth` 的副本，
+UI 默认加载，见 [`docs/TRAINED-WEIGHTS-UI.md`](docs/TRAINED-WEIGHTS-UI.md)）。
 
 ## 规则（摘要）
 
