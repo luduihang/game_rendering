@@ -1,0 +1,8 @@
+### 5局测速
+  "elapsed_sec": 0.065,
+wall 2.89 s
+
+### 正式训练（100局）
+  "checkpoint": "run/final/dqn_sp_ep100_seed7.pth",
+  "opponent_checkpoint": "run/final/dqn_sp_opp_ep100_seed7.pth"
+}
