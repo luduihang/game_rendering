@@ -134,7 +134,7 @@ python -m scripts.evaluate --checkpoint … --opponent-checkpoint … --rounds 3
 
 ### SC8 — ARCHITECTURE.md 已同步更新 ✅
 
-**实测**：439 → **565 行**；引用总数 422 → **498**，**越界 0 处**（校验脚本 `management/evidence/arch-ref/check_refs.py`）。
+**实测**：439 → **578 行**；引用总数 422 → **498**，**越界 0 处**（校验脚本 `management/evidence/arch-ref/check_refs.py`）。
 
 **新增**：`4.4` 自博弈环境 · `4.5` 根因与解法 · `4.6` 训练与评估入口 · `4.7` 机器对手接线 · `4.8` 权重获取与存放 · `6.10/6.11/6.12` 三份新测试清单 · 7.6/7.7 逐条处置标注。
 
