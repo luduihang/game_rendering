@@ -86,6 +86,8 @@ scripts/   env·train·evaluate                        训练/评估入口
 mymath/    func_const·probability_func               概率密度工具（Robot 依赖）
 tests/     单元测试 + baseline 缺陷回归脚本（含 headless 人机对局验收）
 src/       美术与音频资源（button/card_pic/character/Font/item_pic/BGM；另有 card_pic备用/、login/ 等未被引用的残留目录）
+docs/      架构知识库、训练报告、权重与 UI 接线说明
+management/ 治理账本阅读视图 + 项目证据档案（入口：management/NAVIGATION.md）
 ```
 
 ## 四个入口
