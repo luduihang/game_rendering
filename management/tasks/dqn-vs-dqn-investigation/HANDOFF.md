@@ -6,6 +6,7 @@
 当前工作空间：无
 基线：无
 未提交文件：无工作空间
-最新交付：无
+最新交付：6bd6253
+交付文件：A management/evidence/investigation/invest-D-training.md；A management/evidence/investigation/invest-E-interactive.md；A management/evidence/investigation/invest-F-refactor-list.md
 未决审批：无
 接管前必须运行 workspace inspect，检查未提交和未跟踪文件。

@@ -3,7 +3,7 @@
 项目 ID：0c68bf5a-2104-498a-9532-7a2f6f2384f3
 
 项目基线：r4 / ACTIVE；草稿：4。
-任务 10；已验收 6；执行中 0；阻塞 0；待决策 0。
+任务 10；已验收 8；执行中 0；阻塞 0；待决策 0。
 
 ## 活跃 Agent
 
@@ -43,6 +43,10 @@
 - R-fbe3fe00-4658-4bb9-b3fc-d50d73c6e843: 未知
 - R-547c30ef-be71-469c-99f7-8d7721ef7cfe: $0
 - R-260d66ae-1c6b-4fca-9a15-5b358a0c2494: $0
+- R-9505e508-673a-4e7c-b7c9-b3d60efa0bdf: $0
+- R-5470b352-ac58-40cd-bf08-ea54afe835e9: $0
+- R-b6b3baa6-0a8d-4358-aeb2-abb543a459b6: $0
+- R-2afb34fe-40f0-4705-b3b7-0cab101ceae2: $0
 
 ## 风险与遗留
 
@@ -75,21 +79,27 @@
 - arch-ref-fix: 4 处内容级过期（行号正确但描述与当前代码不符），属 T5b（arch-doc-update）范围，已记录于 management/evidence/arch-ref/CONTENT-STALE.md 与 reviewer 报告：doc 153 的 core.rules.Action 逐行归属错（23 行实为 from scripts.env import）、doc 426 的 pyproject.toml extend-exclude 已无「备份」条目、doc 385 称 last_now 为类级属性但实际在 __init__ 内、doc 380 仍描述已废弃的 Action(key - pygame.K_1) 差值映射。
 - arch-ref-fix: 23 处 UNRESOLVED 为同名多候选（__init__.py×2、README.md×19 等），行号本身在候选文件范围内；reviewer 抽查 12/30/39/59/63/71-75/86/96-97 行内容全部吻合，判定按上下文语义指向根 README.md 成立。
 - arch-ref-fix: check_refs.py 原将 REPO 硬编码为主仓路径，导致在 worktree 中复跑得到假阳性（reviewer 发现）。已参数化为环境变量 ARCH_REF_REPO，并修正裸文件名的同名候选解析与 worktree 路径被误过滤的问题；修正后 worktree 与主仓复跑结果一致。
+- arch-doc-update: reviewer 首轮复核提出 2 项必须返工（4.5 分桶数字的出处与所引文件不符、底池 20060 缺可复现命令）+ 1 项建议（56/44 未标口径）。已全部修正并复验：分桶主引用改为 docs/selfplay_train_report.md §5（弱 0.000 / 中 0.7353 / 强 1.000，区间 0.3<p≤0.6），另两次独立复测各附真实出处（review-train-100-final.md、review-train-100.md 第 5 项），并说明差异来自盘面随机种子、稳定判据是最大占比<0.95 与分档单调序；现象段补上完整复现命令与输出并标注 --opponent-mode self 与 --strength-shaping 0 两参数缺一不可；56/44 加「训练期」限定并补 ε=0 评估为 0.5/0.5。
+- arch-doc-update: 返工过程中 worker 就「第二次复测的出处文件」提出指令与仓库证据冲突（Main 原指定的 review-arch-doc-update.md 不含 0.1491/0.9650）。经 Main 独立复核确认 worker 正确、原指令指错文件，已按选项 A 更正为 review-train-100.md 第 5 项。
+- arch-doc-update: 整体校验 498 处引用中 0 处越界；7 处「文件缺失」为同名多候选（__init__.py、README.md 等）无法自动唯一解析，已逐条按上下文语义核对成立。
+- dqn-vs-dqn-investigation: 该 Task 为只读调查，无代码交付，产物为三份 markdown 报告。
+- dqn-vs-dqn-investigation: 报告成文于 T1~T4 实施之前，其中若干 file:line 已因后续重构漂移（尤其 ui/app.py、scripts/*）；报告结论的**技术判断**仍有效，但引用行号应按 T5a 校正后的 docs/ARCHITECTURE.md 对照阅读。
+- dqn-vs-dqn-investigation: 13 处 UNKNOWN 是当时的真实限制（reader 角色无 bash 工具、src/ 总大小未 stat、cu130 URL 未联网验证等），其中部分已在后续 Task 中被实际核验填补。
 
 ## 最近事件
 
-- 2026-11-02T17:30:57.856Z agent.action-result arch-ref-fix 
-- 2026-11-02T17:31:02.550Z agent.action-observed arch-ref-fix 
-- 2026-11-02T17:31:02.979Z agent.action-result arch-ref-fix 
-- 2026-11-02T17:31:09.460Z agent.action-observed arch-ref-fix 
-- 2026-11-02T17:31:09.890Z agent.action-result arch-ref-fix 
-- 2026-11-02T17:31:15.742Z deliverable.submitted arch-ref-fix R-547c30ef-be71-469c-99f7-8d7721ef7cfe
-- 2026-11-02T17:31:17.356Z agent.action-observed arch-ref-fix 
-- 2026-11-02T17:31:17.789Z agent.action-result arch-ref-fix 
-- 2026-11-02T17:31:25.454Z verification.recorded arch-ref-fix R-547c30ef-be71-469c-99f7-8d7721ef7cfe
-- 2026-11-02T17:31:27.767Z task.accepted arch-ref-fix 
-- 2026-11-02T17:31:29.481Z agent.action-observed arch-ref-fix 
-- 2026-11-02T17:31:29.910Z agent.action-result arch-ref-fix 
+- 2026-11-03T02:54:25.222Z agent.action-observed arch-doc-update 
+- 2026-11-03T02:54:25.687Z agent.action-result arch-doc-update 
+- 2026-11-03T02:54:35.168Z agent.action-observed arch-doc-update 
+- 2026-11-03T02:54:35.638Z agent.action-result arch-doc-update 
+- 2026-11-03T02:54:46.058Z verification.recorded dqn-vs-dqn-investigation R-f241bbd7-1559-42ee-b13e-23974b06e795
+- 2026-11-03T02:54:47.855Z agent.action-observed arch-doc-update 
+- 2026-11-03T02:54:48.325Z agent.action-result arch-doc-update 
+- 2026-11-03T02:54:56.363Z task.accepted dqn-vs-dqn-investigation 
+- 2026-11-03T02:54:58.204Z agent.action-observed arch-doc-update 
+- 2026-11-03T02:54:58.679Z agent.action-result arch-doc-update 
+- 2026-11-03T02:55:07.679Z agent.action-observed arch-doc-update 
+- 2026-11-03T02:55:08.148Z agent.action-result arch-doc-update 
 
 ## 下一步
 

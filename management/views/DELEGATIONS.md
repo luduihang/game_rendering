@@ -471,7 +471,7 @@ F. tests/baseline/ 里剩余的 repro_d7_timing.py 复现的是哪个历史缺�
 
 ## dqn-vs-dqn-investigation：为「重构 + 人类 vs 机器 + DQN 对抗 DQN」做只读调研，产出可直接写入基线 PRD 的结论：(1) 训练侧 scripts/train.py 与 scripts/env.py 当前如何选对手、用什么状态/动作空间，能否改成 DQN-vs-DQN 自博弈；(2) 交互侧 ui/app.py 如何加载并推理机器对手（epsilon、状态编码、动作映射、checkpoint 缺失回退），换成自博弈权重要动哪些点；(3) 仓库现有 .pth 权重清单与各自维度；(4) 按 docs/ARCHITECTURE.md 第 7.7 节梳理 10 个小问题的可执行重构清单，并按第 7.1-7.6 节标出哪些是高风险不可碰。Main Agent 只做调度与编排。
 
-- 状态：已批准；未验收
+- 状态：已验收；已验收
 - 预算：90000 tokens；授权路径 agents, scripts, ui, core, tests, docs, README.md, CHANGELOG.md, pyproject.toml
 
 - Delegation G-68b33d7d-8691-49e8-80f1-29e62fd62eef：reader
@@ -582,6 +582,48 @@ F. tests/baseline/ 里剩余的 repro_d7_timing.py 复现的是哪个历史缺�
 ## UNKNOWN 清单
     - 授权：工具 read, grep, find, ls；路径 ./docs, ./core, ./agents, ./ui, ./scripts, ./tests, ./README.md, ./const.py, ./algorithm.py；额度 30000 tokens
         - Run R-f241bbd7-1559-42ee-b13e-23974b06e795：SUCCEEDED；reader；模型 vllm-local/Qwen3.8-27B；2118392 tokens
+- Delegation G-ab4610c2-668c-4203-9ae7-735b8e5b445c：reviewer
+    - 目标：【独立确认：只读调查报告的 6 条验收是否达标】
+
+**只读复核，不改任何文件、不提交。** 这是一份**已交付的只读调查**（无代码交付），你只做一件事：核对 3 份报告是否满足 6 条验收。
+
+**第一件事**：跑 `bash -lc 'echo TOOL_OK'`。没有 bash 就立刻回复说明。
+
+## 被核验的交付物（3 份报告，共 425 处 file:line 引用）
+- `management/evidence/investigation/invest-D-training.md`（133 行）—— 训练侧可行性与落地路径
+- `management/evidence/investigation/invest-E-interactive.md`（101 行）—— 交互侧
+- `management/evidence/investigation/invest-F-refactor-list.md`（97 行）—— 7.7 节问题清单与高风险项策略
+
+**注意**：这三份报告成文于 T1~T4 实施**之前**，其中部分 `file:line` 因后续重构已漂移。**行号漂移不算不通过** —— 验收问的是「报告当时是否给出了带 file:line 的结论」，不是「行号今天是否还准」。但如果你发现某条验收**根本没有任何结论**，那才算不通过。
+
+## 6 条验收，逐条核验
+1. **落地路径**：明确给出「机器对手改为 DQN-vs-DQN 自博弈策略」要改哪些文件、哪些函数签名、训练产出什么 checkpoint、交互入口如何加载，附 file:line
+2. **可行性结论**：DQN-vs-DQN 自博弈在现有代码上的可行性（状态空间/动作空间是否自洽、对手如何选、epsilon 策略是否需要改）
+3. **权重清单**：列出仓库现有 `.pth` 权重的实际清单与各自维度（input_dim/action_dim），说明哪个可直接用、哪个需新训
+4. **重构清单**：7.7 节全部 10 个小问题的可执行清单 —— 每条含位置 file:line、建议改法、会被打红的测试（若有）、改动代价分级
+5. **高风险项策略**：7.1–7.6 节的 6 类高风险项各自应采取的策略（避开 / 可安全做 / 需要新测试先行）
+6. **证据与 UNKNOWN**：全部结论带 file:line 证据；无法确认的明确标 UNKNOWN
+
+## 核验方法
+- **只定点看**，不要通读：先 `grep -n "^#\|^##" <文件>` 拿到章节行号，再 `sed -n 'M,Np'` 看要点段落。
+- 用 `grep -c 'file:line 模式'` 类命令统计引用密度（可抽样验证引用是真的指向相关代码，不必逐条验证 425 处）。
+- 逐条验收给出：**有结论 / 无结论** + 支撑它的行号 + 你自己 grep 出的量化数字（如引用总数、UNKNOWN 数量、S/M/L 条目数）。
+
+## 输出纪律（强制）
+- 每条 bash 输出 ≤ 30 行；批量结果写 `/tmp/rev_invest.txt`，只把摘要（≤20 行）读回上下文。
+- **边做边写**结论。探索预算：最多 25 次工具调用。
+- 目标 **15 分钟内**完成。
+
+## 报告（≤1000 字）
+- 6 条验收逐条：有/无结论 + 支撑行号 + 你 grep 出的量化数字
+- 三份报告的 file:line 引用总数与 UNKNOWN 数量（你自己 grep 的）
+- 7.7 的 10 条清单是否齐全、S/M/L 分级是否存在
+- **必须返工项**（没有就明确写"无"）
+- 风险与遗留
+
+**不要替调查者补写内容，只报告问题。**
+    - 授权：工具 bash, read, grep, find, ls；路径 agents, scripts, ui, core, tests, docs, README.md, CHANGELOG.md, pyproject.toml；额度 30000 tokens
+        - Run R-2afb34fe-40f0-4705-b3b7-0cab101ceae2：SUCCEEDED；reviewer；模型 vllm-local/Qwen3.8-27B；63355 tokens
 
 ## selfplay-engine：实现 DQN 对抗 DQN（自博弈）训练机制：在 scripts/env.py 与 scripts/train.py 上让两个 DQN 互相对弈，产出可加载的策略文件。本 Task 只做机制与测试，不跑长训练（训练由下游独立 Task 执行）。Main Agent 只调度编排，编码全部由子 Agent 完成。
 
@@ -1671,7 +1713,7 @@ worker 声称已实现：checkpoint 路径可配置（CLI > 环境变量 > 默�
 
 ## final-audit：终审：独立核验 r4 基线的 9 条验收标准与「不可碰」清单，并同步更新 docs/ARCHITECTURE.md。核验由 reviewer 独立完成，文档更新由 worker 执行。Main Agent 只调度编排。
 
-- 状态：已批准；未验收
+- 状态：已取消；未验收
 - 预算：1800000 tokens；授权路径 docs, tests, ui, scripts, core, agents, README.md, CHANGELOG.md
 
 - Delegation G-74a86397-4641-4727-9a71-b7bf5c85ec2b：worker
@@ -1929,3 +1971,217 @@ git diff --stat c30b4f9..7f59339
 **不要替 worker 补写内容，只报告问题。**
     - 授权：工具 bash, read, grep, find, ls；路径 docs；额度 25000 tokens
         - Run R-260d66ae-1c6b-4fca-9a15-5b358a0c2494：SUCCEEDED；reviewer；模型 vllm-local/Qwen3.8-27B；597270 tokens
+
+## arch-doc-update：为 docs/ARCHITECTURE.md 补充本轮新增内容：自博弈训练章节、机器对手接线章节、权重获取与存放说明、7.6/7.7 条目处置结果、第 6 节新增测试文件清单、CHANGELOG 记录。所有实测数据由 Main Agent 提供，worker 不需要自行探索。这是 final-audit 拆分后的第二个 Task。
+
+- 状态：已验收；已验收
+- 预算：1800000 tokens；授权路径 docs, README.md, CHANGELOG.md
+
+- Delegation G-fa03ee10-5821-4952-b6d6-e73d77987c8e：worker
+    - 目标：【T5b：为 ARCHITECTURE.md 补充本轮新增内容 —— 事实数据已全部备好，你只负责组织成文】
+
+**worktree**：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/arch-doc-update`
+**分支**：governance/arch-doc-update，HEAD = `7f59339`（已含 T5a 的 129 处行号校正成果）
+**写入范围**：`docs/`、`README.md`、`CHANGELOG.md`。**不要改任何源码。**
+
+**硬约束**：
+- 不要修改 pi 的源码（`/home/kipley/Documents/code/learning/pi` 下任何文件）。
+- 不要改 `docs/ARCHITECTURE.md` 里**已有的** `file:line` 引用（T5a 刚校正过 129 处）。你**只新增内容**，或按下方「需要修正的措辞」清单改措辞。
+- 不新增第三方依赖。
+
+## 背景：为什么这个任务以前失败了
+上一个 worker 被同时要求「审计 9 条验收 + 核对 10 条红线 + 校正 422 处引用 + 写新章节 + 复现验证」，上下文冲到 103%、消耗 136 万 token、零产出。
+**这次不同：所有事实数据由 Main Agent 备好并直接写在下面**，你不需要跑任何验证、也不需要探索代码。
+
+## 你要写的三件事（只有三件）
+
+### 1. 新增「自博弈训练」章节
+建议放在第 4 节（关键调用链）之后，或作为第 4.4~4.6 小节 + 独立章节。内容必须覆盖以下**已验证的事实**（每条都附 file:line 引用，请自己用 `sed -n 'M,Np'` 定点确认行号再写）：
+
+**环境机制**（`scripts/env.py`）
+- `CardGameEnv` 支持 DQN 对手（不再是只有 Robot）；对手走自己的观测、transition、replay 路径
+- 对手视角的 4 维观测（`scripts/env.py` 的 `_opponent_observation()`）
+- **严格零和**：`agent_reward + opponent_reward == 0` 恒成立；终局结算口径为赢方 `+all_bet`、输方 `-all_bet`（`_settle_rewards`，**本轮未改**）
+- **逐局座位交换**：`agent_player` 每局翻转，让先手优势在两个策略间交替（座位 0 恒先手是 `core/rules.py` 的既有规则，未改）
+
+**根因与解法（本章最有价值的部分，务必写清楚）**
+- 现象：默认超参下贪心策略恒为 `bet_100`、动作分布退化为单一动作、对局永不自然结束（撞 `MAX_STEPS=200` 强停、底池涨到 20060）
+- **根因**：终局奖励 `±all_bet` 的量级随押注额线性增长（±数百至数千），于是 Q 值天然单调偏好最大押注 → `argmax` 恒为 `bet_100`；实测 `Q(bet_100) > Q(bet_50) > Q(bet_20) > Q(bet_10)` 在所有状态下成立
+- **解法**：`strength_shaping` —— 按**押注额**（而非底池）计酬的稠密零和奖励 `k·(p−0.5)·押注额`，`p = beats_probability`（手牌击败随机手牌概率）；强牌 `p>0.5` 押注为正、弱牌 `p<0.5` 押注为负
+- **关键**：必须按**押注额**计酬。按底池计会自增强成死循环（底池越大 Q(加注) 越高 → 底池更大）
+- 塑形系数 `k=50.0` 时实测：ε=0 贪心下弱牌（p≤0.3）大注占比 **0.008~0.149**、中牌（0.4~0.6）**0.84~0.97**、强牌（p>0.6）**1.000**，单调递增；`natural_end_rate = 1.0`
+
+**训练入口**（`scripts/train.py`）
+- 三种对手模式：`robot`（旧行为）/ `self`（自博弈）/ `snapshot`（加载对手 checkpoint）
+- `--preset selfplay-v1` 固化的验收配方：`strength_shaping=50.0`、`lr=3e-2`、`batch_size=4`、`epsilon_decay=0.99`、`epsilon_start=0.5`、`opponent_replay_every=1`、`hidden` 缺省 (128,64)
+- 复现命令：`python -m scripts.train --preset selfplay-v1 --episodes 100 --seed 7 --out run/final`
+- 产物：`run/final/dqn_sp_ep100_seed7.pth`（主策略）、`run/final/dqn_sp_opp_ep100_seed7.pth`（对手）
+- **复现性**：同 seed 两次训练 checkpoint sha256 逐字节一致（依赖 `scripts/train.py` 的 `set_global_seed`：`DQNAgent.__init__` 只 seed 了 `self.rng`，网络初始化用 torch 全局 RNG）
+- **陷阱**：隐藏层宽度必须用默认 (128,64) —— `DQNAgent.from_checkpoint` 只自适应 input/action 维度、**不推断隐藏层宽度**，自定义 hidden（如 (32,16)）的 checkpoint 加载会报 `size mismatch for fc1.weight`
+
+**评估入口**（`scripts/evaluate.py`）
+- 双 checkpoint 对战、双方胜率、`natural_end_rate`（区分「自然终局」与「撞 MAX_STEPS 强停」）
+- checkpoint 隐藏层自适应加载（在 evaluate.py 侧读 state_dict 形状，不改 `agents/dqn.py`）
+
+### 2. 新增「机器对手接线」与「权重获取与存放」两节
+
+**接线**（`ui/app.py`）
+- `DEFAULT_CHECKPOINT = REPO/"dqn_model_1.pth"`
+- `resolve_checkpoint(arg, env)` 优先级：**CLI `--checkpoint` > 环境变量 `DQN_CHECKPOINT` > 默认**；相对路径按仓库根解析
+- `Controller.trained`（bool）、`Controller.policy_source`（权重路径 / `"untrained-random(epsilon=0.15)"`）—— 可观测的「是否在用训练策略」标志
+- 加载成功 → `epsilon=0.0`（贪心训练策略）；缺失或**损坏** → 三行醒目告警，明写「当前机器方为**未训练随机策略（epsilon=0.15）**，不是训练出的策略」+ 修复指引，保留回退不崩溃
+- `main()` 的 `--checkpoint` argparse；入口 `draw_me_vs_DQN_Plus.py` 无需改动（argparse 自动读 sys.argv）
+
+**权重获取与存放**
+- 一条命令产出（见上）
+- 产物路径与**部署方式**：复制为仓库根 `dqn_model_1.pth`，或用 `--checkpoint` / `DQN_CHECKPOINT` 指定任意路径
+- **权重不入版本库**：`.gitignore` 的 `*.pth` 与 `run/` 规则；因此新环境需重训或拷贝
+- 本轮实测：把产物复制为 `dqn_model_1.pth` 后，**8 个既有基线失败测试全部转绿，套件 160 passed / 0 failed**
+
+### 3. 修措辞 + 补测试清单 + CHANGELOG
+
+**必须修正的 5 处措辞过期**（行号是对的，是描述过时。清单在 `management/evidence/arch-ref/CONTENT-STALE.md`，请先读它）：
+1. `docs/ARCHITECTURE.md:153` — 「23 → core.rules.Action」错，23 行实为 `from scripts.env import ...`，该文件全文无 core.rules import
+2. `docs/ARCHITECTURE.md:426` — pyproject.toml 的 extend-exclude 已**不含**「备份」条目（T4 移除）
+3. `docs/ARCHITECTURE.md:385` — `last_now` 被描述为「类级属性（未写于 __init__）」，实际在 `__init__` 内（`ui/app.py:104`，`def __init__` 在 79 行）
+4. `docs/ARCHITECTURE.md:381` — 称 `missing_assets()` 未被使用，实际 T4 已改为 `check_assets()` 调用它（`ui/app.py:334`）
+5. `docs/ARCHITECTURE.md:380` — 仍描述已废弃的 `Action(key - pygame.K_1)` 差值映射，现为 `key_to_action_map()`
+
+**补第 6 节测试清单**：新增 `tests/test_selfplay.py`（自博弈机制：DQN 对手注入、视角对称、座位交换、零和奖励、训练冒烟与可复现性）、`tests/test_selfplay_preset.py`（preset 超参防回归、CLI 不 KeyError、逐步零和含非零塑形押注步、checkpoint 默认 config 可加载）、`tests/test_trained_ui.py`（headless 端到端、动作来自训练权重的 argmax 比对、路径优先级、缺失告警）三份的断言摘要。**每份的断言请用 `grep -n "def test_" tests/<file>` 拿到真实测试名再写，不要凭想象。**
+
+**CHANGELOG.md**：追加本轮变更记录（自博弈训练机制与训练配方、UI 机器对手接线与告警、S/M 级重构清理、README 三处修正、新增 3 份测试文件、架构文档同步）。
+
+## 输出纪律（强制，违反会浪费大量 token）
+- **每条 bash 命令输出 ≤ 30 行。** 看源码用 `sed -n 'M,Np'` 定点看；**禁止 `cat` 或 `read` 整个 >300 行的文件**（`docs/ARCHITECTURE.md` 439 行 —— 你可以只读你要参考的章节段落，用 `grep -n "^#" docs/ARCHITECTURE.md` 先拿到章节行号）。
+- 需要看整份文档结构时用 `grep -n "^#"` 而不是 cat。
+- **边做边写**：先写好章节标题与已写内容，每完成一小节就落盘；不要攒到最后一次性输出。
+- **探索预算**：最多 30 次工具调用用于确认行号与测试名；达到即用上面备好的事实数据成文。
+- 目标 **30 分钟内**完成。
+
+## 交付报告（≤2000 字）
+- 新增了哪几节、放在文档什么位置
+- 5 处措辞修正的最终表述
+- 第 6 节补入的 3 份测试文件各有多少个用例（实际数字）
+- 你用 `sed`/`grep` 确认过哪些 file:line（给几个代表性例子）
+- CHANGELOG 的追加位置
+- 未确认的标 UNKNOWN
+
+所有结论带 `文件路径:行号`。**不要替别人补写代码，只写文档。**
+    - 授权：工具 bash, read, edit, write, grep, find, ls；路径 docs, README.md, CHANGELOG.md；额度 70000 tokens
+        - Run R-9505e508-673a-4e7c-b7c9-b3d60efa0bdf：SUCCEEDED；worker；模型 vllm-local/Qwen3.8-27B；678105 tokens
+- Delegation G-a6058a4e-e2f4-4e17-8e13-8e89070a4012：reviewer
+    - 目标：【T5b 轻量复核：ARCHITECTURE.md 新增章节的事实准确性】
+
+**worktree**：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/arch-doc-update`
+**分支**：governance/arch-doc-update，HEAD = `b866a11`（基线 `7f59339`）
+**只读复核**：不改源码、不提交。
+
+**第一件事**：跑 `bash -lc 'echo TOOL_OK && git log --oneline -1'`。没有 bash 就立刻回复说明。
+
+## 小范围复核，15 分钟内完成
+**唯一问题：新增内容的 `file:line` 引用与实测数据是否属实？**
+
+**不要通读 `docs/ARCHITECTURE.md`（569 行）。** 定点看。
+
+## 三件事
+
+### 1. 改动范围
+```sh
+git diff --stat 7f59339..b866a11
+```
+应只有 `docs/ARCHITECTURE.md` 与 `CHANGELOG.md`，**源码零改动**。
+
+### 2. 抽查引用行号（15 条）
+从新增章节 4.4~4.8、6.10~6.12、7.7 中抽 15 条引用，用 `sed -n '<行号>p' <文件>` 验证该行内容与文档描述一致。重点抽：
+- `scripts/env.py` 的 strength_shaping 相关行（172/173/186/81/84）
+- `scripts/train.py` 的 SELFPLAY_V1（51）
+- `scripts/evaluate.py` 的 _hidden_of（35）
+- `ui/app.py` 的 resolve_checkpoint（33）、_load_agent 告警（113/117）、trained（98）
+- `ui/theme.py` 的 button_rects（134）
+
+### 3. 抽查实测数据（4 条）
+文档 4.5 节声称：`k=50` 时弱牌大注占比 0.008~0.149、中牌 0.84~0.97、强牌 1.000、`natural_end_rate=1.0`、seed=7 胜率 56/44、底池 20060。
+**自己跑一遍验证**（训练只花约 1 秒）：
+```sh
+python -m scripts.train --preset selfplay-v1 --episodes 100 --seed 7 --out /tmp/rev_b
+python -m scripts.evaluate --checkpoint /tmp/rev_b/dqn_sp_ep100_seed7.pth --opponent-checkpoint /tmp/rev_b/dqn_sp_opp_ep100_seed7.pth --rounds 30 --seed 7
+```
+核对：胜率是否 56/44、`natural_end_rate` 是否 1.0。
+
+**另外验证 6.10/6.11/6.12 声称的用例数**：用 `grep -c 'def test_' tests/test_selfplay.py tests/test_selfplay_preset.py tests/test_trained_ui.py`，期望 15 / 6 / 15。
+
+## 输出纪律（强制）
+- 每条 bash 输出 ≤ 30 行；大文件只 `sed -n 'M,Np'` 定点看。
+- 批量结果写 `/tmp/rev_arch_doc.txt`，只把摘要（≤20 行）读回上下文。
+- **边做边写**结论。探索预算：最多 25 次工具调用。
+
+## 报告（≤1200 字）
+- 三件事各自的判定
+- 你自己跑出的实测数字（与文档声称的差异要写明）
+- 15 条抽样的不通过项（没有就写"无"）
+- **必须返工项**（没有就明确写"无"）
+- 风险与遗留
+
+**不要替 worker 补写内容，只报告问题。**
+    - 授权：工具 bash, read, grep, find, ls；路径 docs；额度 30000 tokens
+        - Run R-5470b352-ac58-40cd-bf08-ea54afe835e9：SUCCEEDED；reviewer；模型 vllm-local/Qwen3.8-27B；184156 tokens
+- Delegation G-af739cdd-d037-47a2-8efa-0334b343777e：worker
+    - 目标：【T5b 返工：修正 4.5 节的 3 处表述 —— 范围极小，15 分钟内完成】
+
+**worktree**：`/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/arch-doc-update`
+**分支**：governance/arch-doc-update，HEAD = `b866a11`
+**只改** `docs/ARCHITECTURE.md` 的第 4.5 节（当前在 164-175 行附近）。**不要改其他章节，不要改源码。**
+
+## 背景
+reviewer 独立复核后提出 **2 项必须返工 + 1 项建议**。Main Agent 已核实全部三项，问题都在**表述的出处与可复现性**，不在事实本身。
+
+## 三处要改的（只有三处）
+
+### 返工 1：分桶大注占比的出处对不上（docs/ARCHITECTURE.md 4.5 节「实测」段）
+
+**现状**：文档写「弱牌（p≤0.3）大注占比 **0.008~0.149**、中牌（p 0.4~0.6）**0.84~0.97**、强牌（p>0.6）**1.000**」，并标注数据见 `docs/selfplay_train_report.md`。
+
+**问题**：`docs/selfplay_train_report.md` §5 的实际表格是 **弱牌（p ≤ 0.3）= 0.000、中牌（0.3 < p ≤ 0.6）= 0.7353、强牌（p > 0.6）= 1.000**，且分档区间是 `0.3<p≤0.6` 而不是 `0.4~0.6`。文档写的区间数字在所引文件里查不到。
+
+**这两个数字本身是真的** —— 它们来自另外两次**独立复测**（不同盘面随机种子）：
+- T2 最终 reviewer（Run `R-f20e8e16`）：弱 0.0083 / 中 0.8415 / 强 1.000；4 个盘面种子下弱 0.008~0.017、中 0.84~0.86
+- Main Agent（Run 上下文）：弱 0.1491 / 中 0.9650 / 强 1.000
+
+**改法**：把「实测」段改成**以 `docs/selfplay_train_report.md` §5 为主引用**（弱 0.000 / 中 0.7353 / 强 1.000，分档 `p≤0.3` / `0.3<p≤0.6` / `p>0.6`），**并补一句**说明另有两次独立复测（不同盘面随机种子）得到弱 0.008~0.149、中 0.84~0.97、强牌恒为 1.000，**同时给出各自出处**（T2 reviewer 的复核报告 `management/evidence/investigation/review-train-100-final.md`，以及 T5b reviewer 的复核报告 `management/evidence/investigation/review-arch-doc-update.md`）。这样数字与出处自洽，且信息更完整。
+
+### 返工 2：「底池 20060（实测）」缺可复现命令
+
+**现状**：文档写「对局永不自然结束、全部撞 `MAX_STEPS=200` 强停（scripts/env.py:190），底池涨到 20060（实测）」。
+
+**问题**：reviewer 用**默认配置**（robot 对手）复现得到 `natural_end_rate=1.0`、`avg_pot=124`，对不上 —— 因为该现象只在**自博弈 + 无塑形**下出现。
+
+**Main Agent 已实测确认该数字正确**，复现命令是（注意 `--opponent-mode self` 与 `--strength-shaping 0` 两个参数缺一不可）：
+```sh
+python -m scripts.train --episodes 100 --seed 7 --opponent-mode self --strength-shaping 0 --out /tmp/collapse
+python -m scripts.evaluate --checkpoint /tmp/collapse/dqn_sp_ep100_seed7.pth --opponent-checkpoint /tmp/collapse/dqn_sp_opp_ep100_seed7.pth --rounds 30 --seed 7
+```
+输出：`natural_end_rate: 0.0`、`avg_pot: 20060.0`、`action_distribution: {bet_100: 1.0}`、胜率 0.0/0.0。
+
+**改法**：把这两条命令（可写成两行代码块或行内形式）加进「现象」段，并明确注明这是**自博弈 + strength_shaping=0** 的配置。
+
+### 建议 3：56/44 加口径限定
+
+**现状**：「主策略对对手胜率不一边倒（seed=7 实测 56/44，scripts/train.py:48 注释）」。
+
+**问题**：56/44 是**训练期**统计（summary 的 wins/opponent_wins），不是 ε=0 评估结果（reviewer 实测 30 局评估是 0.5/0.5）。当前写法容易被读成评估结果。
+
+**改法**：改成「主策略对对手胜率不一边倒（seed=7 **训练期**实测 56/44，scripts/train.py:48 注释；ε=0 双 checkpoint 评估为 0.5/0.5）」。
+
+## 输出纪律（强制）
+- **每条 bash 输出 ≤ 30 行。** 你只需要改 3 处文案，**不需要再读任何源码或跑训练**（上面已给出核实过的数据）。
+- 用一次 `edit` 调用合并改完这 3 处（或一次脚本批量改）。
+- 改完用 `grep -n "0.7353\|--opponent-mode self\|训练期" docs/ARCHITECTURE.md` 确认落地（输出 ≤ 10 行）。
+- 目标 **15 分钟内**完成。
+
+## 交付
+- 提交到你的分支（commit message 说明修了哪 3 处）。
+- **交付报告 ≤800 字**：3 处各自的改前/改后对照、最终文案、grep 验证输出。
+
+不要改 4.5 节以外的任何内容。**不要动源码。**
+    - 授权：工具 bash, read, edit, write, grep, find, ls；路径 docs；额度 20000 tokens
+        - Run R-b6b3baa6-0a8d-4358-aeb2-abb543a459b6：SUCCEEDED；worker；模型 vllm-local/Qwen3.8-27B；582541 tokens

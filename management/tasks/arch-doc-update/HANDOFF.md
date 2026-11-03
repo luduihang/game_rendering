@@ -5,7 +5,8 @@
 权限：{"commitBranch":true,"integrateBranch":false,"paths":["docs","README.md","CHANGELOG.md"],"readRepository":true,"tools":["bash","read","edit","write","grep","find","ls"],"writeWorkspace":true}
 当前工作空间：/home/kipley/Documents/code/learning/.pi-governance-worktrees-85e3090611ea/arch-doc-update
 基线：c30b4f996f0208b256a36a8e58b5bc647c6b9e8b
-未提交文件：干净
-最新交付：无
+未提交文件：M .agent/telemetry-state.json； M .agent/telemetry.jsonl； M PROGRESS.md
+最新交付：7144fbe4105e4dfa87e2a48e055c6131d9ecafd0
+交付文件：M CHANGELOG.md；M docs/ARCHITECTURE.md
 未决审批：无
 接管前必须运行 workspace inspect，检查未提交和未跟踪文件。

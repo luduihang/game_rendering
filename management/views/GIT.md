@@ -7,4 +7,4 @@
 - human-vs-machine: 6bd6253bf9e122fe1df982f50e20b1b47f050db0 → governance/human-vs-machine → bfa9881406b07da20dd8947a8c6347b8d2edbffc
 - final-audit: e137ff1e1acd06dd3fc0f6d34abe54397b64c5d3 → governance/final-audit → e137ff1e1acd06dd3fc0f6d34abe54397b64c5d3
 - arch-ref-fix: c30b4f996f0208b256a36a8e58b5bc647c6b9e8b → governance/arch-ref-fix → 7f593394c68b4a5d7c18bb80f87b9cb660566af6
-- arch-doc-update: c30b4f996f0208b256a36a8e58b5bc647c6b9e8b → governance/arch-doc-update → c30b4f996f0208b256a36a8e58b5bc647c6b9e8b
+- arch-doc-update: c30b4f996f0208b256a36a8e58b5bc647c6b9e8b → governance/arch-doc-update → 7144fbe4105e4dfa87e2a48e055c6131d9ecafd0

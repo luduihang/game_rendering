@@ -7,22 +7,30 @@
 子任务：无
 批准：是
 审批规则：default / ask / 风险 unknown / sha256:80ac9c75f951a1b5532154746c8b7af4eb600324811f4219f30b133a420cf6df
-验收：未通过
+验收：已通过
 工作空间：无
-最新交付：无
-验证：无
-交付证据：历史记录未核对（提交早于 Git 校验）
+最新交付：6bd6253
+验证：passed
+交付基线：7109e29f96000ab9f998338f4aa727f7102dd37e
+交付改动：+334 / -0
 
 ## 交付测试
 
-尚无交付。
+| 命令 | 通过 | 失败 | 输出文件 | 核验 |
+| --- | --- | --- | --- | --- |
+| grep -c 'UNKNOWN' management/evidence/investigation/invest-*.md | 13 | 0 | `management/evidence/investigation/invest-F-refactor-list.md` | 已核验 2ba409547d91 |
 
 ## 交付文件
 
-历史交付未记录文件级归属。
+| 文件 | 变更 | 新增 | 删除 |
+| --- | --- | --- | --- |
+| `management/evidence/investigation/invest-D-training.md` | A | 134 | 0 |
+| `management/evidence/investigation/invest-E-interactive.md` | A | 102 | 0 |
+| `management/evidence/investigation/invest-F-refactor-list.md` | A | 98 | 0 |
 
 ## Run
 
 - R-a76db659-51d1-48f0-a73b-f57628a4d889 SUCCEEDED；Pi f871fa5c-689c-4f72-9fe2-2f234df60d22；原生状态 complete；Agent reader；模型 vllm-local/Qwen3.8-27B；配置 qwen38；策略 7fd25feb4351731c959838675e450dbb82ff8db6b0eb5107fb4b93d604799670；Session /home/kipley/.pi/agent/sessions/--home-kipley-Documents-code-learning-game_rendering--/2026-11-01T15-12-21-269Z_01a197ab-3114-7697-b9c6-48613cba46e1/07e2ddd7-07d8-471f-acb4-8af3aa15fedc/run-0/session.jsonl；检查：`node .pi/governance/cli.ts run inspect R-a76db659-51d1-48f0-a73b-f57628a4d889`；终态对账：`node .pi/governance/cli.ts run reconcile R-a76db659-51d1-48f0-a73b-f57628a4d889`
 - R-30f786fa-07bc-45e5-8102-c936d9bc440d SUCCEEDED；Pi 86e5cb47-fad1-40a5-804b-cfa95227a043；原生状态 complete；Agent reader；模型 vllm-local/Qwen3.8-27B；配置 qwen38；策略 7fd25feb4351731c959838675e450dbb82ff8db6b0eb5107fb4b93d604799670；Session /home/kipley/.pi/agent/sessions/--home-kipley-Documents-code-learning-game_rendering--/2026-11-01T15-12-21-269Z_01a197ab-3114-7697-b9c6-48613cba46e1/b3a1aba6-6e77-42eb-ac6c-212daf6bf2d8/run-0/session.jsonl；检查：`node .pi/governance/cli.ts run inspect R-30f786fa-07bc-45e5-8102-c936d9bc440d`；终态对账：`node .pi/governance/cli.ts run reconcile R-30f786fa-07bc-45e5-8102-c936d9bc440d`
 - R-f241bbd7-1559-42ee-b13e-23974b06e795 SUCCEEDED；Pi 30ad329f-25e7-4dbc-95a2-221b29f74713；原生状态 complete；Agent reader；模型 vllm-local/Qwen3.8-27B；配置 qwen38；策略 7fd25feb4351731c959838675e450dbb82ff8db6b0eb5107fb4b93d604799670；Session /home/kipley/.pi/agent/sessions/--home-kipley-Documents-code-learning-game_rendering--/2026-11-01T15-12-21-269Z_01a197ab-3114-7697-b9c6-48613cba46e1/c9866036-ded2-43f8-a832-9c34ef824fea/run-0/session.jsonl；检查：`node .pi/governance/cli.ts run inspect R-f241bbd7-1559-42ee-b13e-23974b06e795`；终态对账：`node .pi/governance/cli.ts run reconcile R-f241bbd7-1559-42ee-b13e-23974b06e795`
+- R-2afb34fe-40f0-4705-b3b7-0cab101ceae2 SUCCEEDED；Pi 9efdfdcf-1bf9-49b7-9ddd-2eb4197bfa39；原生状态 complete；Agent reviewer；模型 vllm-local/Qwen3.8-27B；配置 qwen38；策略 4335f677177386421e266568c171f7539dde74107847c2bd3e7cee6a553a649c；Session /home/kipley/.pi/agent/sessions/--home-kipley-Documents-code-learning-game_rendering--/2026-11-01T15-12-21-269Z_01a197ab-3114-7697-b9c6-48613cba46e1/6d8f6998-145b-42c2-a3e3-ea645fba22a2/run-0/session.jsonl；检查：`node .pi/governance/cli.ts run inspect R-2afb34fe-40f0-4705-b3b7-0cab101ceae2`；终态对账：`node .pi/governance/cli.ts run reconcile R-2afb34fe-40f0-4705-b3b7-0cab101ceae2`
