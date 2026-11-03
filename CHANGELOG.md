@@ -126,3 +126,28 @@ git checkout <删除提交的父提交> -- 备份/
 - 新增 `tests/test_ui.py::TestEntryAndAssets::test_startup_asset_check_reports_specific_missing`（缺失资源场景报出具体资源名）
 - 新增 `tests/test_ui.py::TestOriginalTextures::test_button_rects_return_pygame_rects`（运行时类型为 pygame.Rect）
 - 新增 `tests/test_purity.py::test_import_core_does_not_build_strength_table`（全新解释器验证惰性建表）
+
+## [0.3.0] — 自博弈训练与 UI 机器对手接线
+
+### 自博弈训练（scripts/env.py · scripts/train.py · scripts/evaluate.py）
+- `CardGameEnv` 支持 DQN 对手：`self`（自博弈）/ `snapshot`（固定 checkpoint）两种新对手模式；对手走自己的观测、transition、replay 路径（`_opponent_observation` 对手视角 4 维观测，与 agent 视角互为镜像），逐局座位交换使先手优势在两策略间交替（座位 0 恒先手，core 规则不变）
+- 严格零和：`agent_reward + opponent_reward == 0` 逐局恒成立（终局结算口径未改：赢方 +all_bet / 输方 -all_bet，`_settle_rewards`）
+- 新增稠密奖励塑形 `strength_shaping`：`k·(p−0.5)·押注额`（p=beats_probability），按**押注额**（而非底池，避免自增强死循环）计酬；修复「终局奖励 ±all_bet 量级随押注额线性增长 → Q 单调偏好最大押注 → 贪心恒 bet_100、动作分布退化、对局永不自然结束（撞 MAX_STEPS=200 强停、底池涨到 20060）」的塌缩；k=50.0 实测大注占比随牌力单调递增（弱牌 0.008~0.149 / 中牌 0.84~0.97 / 强牌 1.000）、natural_end_rate=1.0
+- `scripts/train.py` 新增 `--opponent-mode {robot,self,snapshot}`（robot 为旧行为、产物命名不变）与 `--preset selfplay-v1`（固化验收配方：strength_shaping=50.0 / lr=3e-2 / gamma=0.95 / batch_size=4 / epsilon_start=0.5 / epsilon_decay=0.99 / opponent_replay_every=1 / hidden 缺省 (128,64)）；同 seed 产出 checkpoint sha256 逐字节一致（依赖 `set_global_seed`；注意 `from_checkpoint` 不推断隐藏层宽度，自定义 hidden 会 size mismatch）
+- `scripts/evaluate.py` 新增 `--opponent-checkpoint` 双 checkpoint 对战（双方胜率 + 对手动作分布），summary 新增 `natural_end_rate`（区分自然终局与 MAX_STEPS 强停）；隐藏层宽度在 evaluate.py 侧读 state_dict 形状自适应（不改 agents/dqn.py）
+- 复现：`python -m scripts.train --preset selfplay-v1 --episodes 100 --seed 7 --out run/final` → `run/final/dqn_sp_ep100_seed7.pth`（主策略）+ `run/final/dqn_sp_opp_ep100_seed7.pth`（对手）；实测训练数据见 `docs/selfplay_train_report.md`
+
+### UI 机器对手接线（ui/app.py）
+- 新增 `resolve_checkpoint`：路径优先级 CLI `--checkpoint` > 环境变量 `DQN_CHECKPOINT` > 默认仓库根 `dqn_model_1.pth`，相对路径按仓库根解析；`main()` 新增 `--checkpoint`（入口 draw_me_vs_DQN_Plus.py 无需改动）
+- `Controller.trained` / `Controller.policy_source` 提供可观测的「是否在用训练策略」标志；加载成功为 ε=0.0 贪心训练策略；缺失或损坏权重三行醒目告警（明写「当前机器方为未训练随机策略（epsilon=0.15），不是训练出的策略」）+ 修复指引，保留回退不崩溃
+- 把训练产物复制为 `dqn_model_1.pth` 后，8 个既有基线失败测试全部转绿，全套件 **160 passed / 0 failed**
+- 权重不入版本库（`.gitignore` 的 `*.pth` 与 `run/` 规则）；新环境需重训（命令见上）或拷贝权重（详见 docs/ARCHITECTURE.md 4.7/4.8）
+
+### 测试（新增 3 份文件，共 36 用例）
+- 新增 `tests/test_selfplay.py`（15 用例）：DQN 对手注入、对手视角对称、座位交换、零和奖励、冻结对手、训练冒烟与同 seed 可复现性、snapshot 模式、双 checkpoint 评估
+- 新增 `tests/test_selfplay_preset.py`（6 用例）：preset 超参防回归、CLI 端到端、checkpoint 默认 config 可加载、self 模式不 KeyError、终局与逐步严格零和（含非零塑形押注步）
+- 新增 `tests/test_trained_ui.py`（15 用例）：headless 端到端、动作与 checkpoint argmax 比对、路径优先级（CLI > 环境变量 > 默认）、缺失/损坏权重告警
+
+### 文档
+- `docs/ARCHITECTURE.md`：新增 4.4~4.8（自博弈环境、根因与 strength_shaping 解法、训练/评估入口、机器对手接线、权重获取与存放）与 6.10~6.12（3 份新测试文件断言清单）；7.6/7.7 条目逐条标注处置结果（已处置/升级/保留）；修正 6 处措辞过期（evaluate.py:23 import 归属、extend-exclude「备份」条目、missing_assets 使用情况、button_rects 注解、键码映射、last_now 属性位置）
+- S/M 级重构清理与 README 三处修正已记录于 [0.2.1]
