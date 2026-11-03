@@ -163,7 +163,14 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 
 ### 4.5 根因与解法：贪心为何退化为 bet_100，strength_shaping 如何打破
 
-**现象**（默认超参、无稠密塑形）：ε=0 贪心策略恒为 `bet_100`，动作分布退化为单一动作，对局永不自然结束、全部撞 `MAX_STEPS=200` 强停（scripts/env.py:190），底池涨到 20060（实测）。
+**现象**（自博弈 `--opponent-mode self` + `--strength-shaping 0`，两参数缺一不可；默认 robot 对手配置下不复现）：ε=0 贪心策略恒为 `bet_100`，动作分布退化为单一动作，对局永不自然结束、全部撞 `MAX_STEPS=200` 强停（scripts/env.py:190），底池涨到 20060（实测）。复现：
+
+```
+python -m scripts.train --episodes 100 --seed 7 --opponent-mode self --strength-shaping 0 --out /tmp/collapse
+python -m scripts.evaluate --checkpoint /tmp/collapse/dqn_sp_ep100_seed7.pth --opponent-checkpoint /tmp/collapse/dqn_sp_opp_ep100_seed7.pth --rounds 30 --seed 7
+```
+
+输出：`natural_end_rate: 0.0`、`avg_pot: 20060.0`、`action_distribution: {bet_100: 1.0}`、胜率 0.0/0.0。
 
 **根因**：终局奖励 `±all_bet`（scripts/env.py:226-232）量级随押注额线性增长（±数百至数千），Q 值天然单调偏好最大押注 → `argmax` 恒为 `bet_100`；实测 `Q(bet_100) > Q(bet_50) > Q(bet_20) > Q(bet_10)` 在所有状态下成立（docs/selfplay_train_report.md）。
 
@@ -171,7 +178,9 @@ python scripts/train.py --episodes N --seed S --device {cpu,cuda} --out DIR   �
 
 **必须按押注额而非底池计酬**：按底池计会自增强成死循环——底池越大 Q(加注) 越高 → 底池更大；按押注额计酬让奖励只随当前动作押注额线性变化，打破塌缩。
 
-**实测**（`k=50.0`、ε=0 贪心、`--preset selfplay-v1`）：弱牌（p≤0.3）大注占比 **0.008~0.149**、中牌（p 0.4~0.6）**0.84~0.97**、强牌（p>0.6）**1.000**，随牌力单调递增；`natural_end_rate = 1.0`（对局全部自然终局）；主策略对对手胜率不一边倒（seed=7 实测 56/44，scripts/train.py:48 注释）。完整数据见 docs/selfplay_train_report.md。
+**实测**（`k=50.0`、ε=0 贪心、`--preset selfplay-v1`），主引用 docs/selfplay_train_report.md §5 实测表：弱牌（p≤0.3）大注占比 **0.000**、中牌（0.3<p≤0.6）**0.7353**、强牌（p>0.6）**1.000**，随牌力单调递增；`natural_end_rate = 1.0`（对局全部自然终局）；主策略对对手胜率不一边倒（seed=7 **训练期**实测 56/44，scripts/train.py:48 注释；ε=0 双 checkpoint 评估为 0.5/0.5）。
+
+另有两次独立复测（不同盘面随机种子）：T2 最终 reviewer 复测弱 **0.0083** / 中 **0.8415** / 强 **1.000**（4 个盘面种子下弱 0.008~0.017、中 0.84~0.86），出处 `management/evidence/investigation/review-train-100-final.md`；Main Agent 复测弱 **0.1491** / 中 **0.9650** / 强 **1.000**，出处 `management/evidence/investigation/review-train-100.md` 第 5 项。三套实测分档手数完全相同（弱 751 / 中 714 / 强 935），差异全部来自前 3 维盘面特征的随机种子取值不同（第 4 维 beats_probability 是确定性的）；稳定判据是「最大动作占比 < 0.95」与「强度分档单调序」，不是绝对值（差异说明见 `management/NOW.md` 风险与遗留 selfplay-train-100 条目）。
 
 ### 4.6 训练与评估入口：scripts/train.py / scripts/evaluate.py
 
